@@ -1,0 +1,54 @@
+# Clichés de linguagem (pt). Uma expressão por linha; a comparação ignora maiúsculas e acentos.
+# Extensões por projeto: projects/<slug>/editorial/style/cliches-extra.txt
+# Clichés deliberados:   projects/<slug>/editorial/style/cliches-allow.txt
+# Corpo e emoção
+coração apertado
+coração aos saltos
+o coração parou
+nó na garganta
+sangue gelou
+arrepio na espinha
+um calafrio percorreu
+soltou o ar que não sabia que estava a suster
+soltou a respiração que não sabia
+lágrimas rolaram
+lágrimas a escorrer pela face
+sorriso que não chegou aos olhos
+os olhos brilharam
+olhos cor de esmeralda
+olhos cor de mar
+engoliu em seco
+mordeu o lábio
+cerrou os punhos
+o silêncio era ensurdecedor
+silêncio ensurdecedor
+# Tempo e atmosfera
+numa noite escura e tempestuosa
+era uma noite escura
+o tempo parou
+o tempo pareceu parar
+como se o mundo tivesse parado
+de repente, tudo mudou
+num piscar de olhos
+a calma antes da tempestade
+um frio na barriga
+o sol despontava no horizonte
+o céu chorava
+# Narrativa
+e então acordou
+tudo não passou de um sonho
+algo lhe dizia que
+sem que ninguém soubesse
+mal sabia ela
+mal sabia ele
+nada voltaria a ser igual
+nada seria como antes
+como se lesse os meus pensamentos
+uma mistura de medo e excitação
+# Comparações gastas
+branco como a neve
+frio como o gelo
+leve como uma pena
+rápido como um relâmpago
+duro como pedra
+como um livro aberto

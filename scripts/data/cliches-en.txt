@@ -1,0 +1,22 @@
+# Language clichés (en). One phrase per line; matching ignores case and accents.
+let out a breath she didn't know she was holding
+let out a breath he didn't know he was holding
+a smile that didn't reach his eyes
+a smile that didn't reach her eyes
+heart skipped a beat
+blood ran cold
+shiver down her spine
+shiver down his spine
+lump in her throat
+lump in his throat
+time stood still
+it was a dark and stormy night
+little did she know
+little did he know
+nothing would ever be the same
+the silence was deafening
+in the blink of an eye
+calm before the storm
+it was all a dream
+white as snow
+cold as ice

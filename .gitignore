@@ -1,0 +1,16 @@
+# Dados pessoais: ficam só no computador
+financas/movimentos/
+financas/contas.csv
+financas/objetivos.md
+financas/notas/
+pensar/conversas/
+rotina/revisoes/
+rotina/tarefas.md
+config/rumo.json
+*.extrato.csv
+extratos/
+
+node_modules/
+
+# Estado da sincronização com o Rumo
+.sync/

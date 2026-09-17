@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(node scripts/cwos.mjs *)",
+      "Bash(node scripts/rotina.mjs *)",
+      "Bash(node scripts/financas.mjs *)",
+      "Bash(node scripts/lembretes.mjs *)",
+      "Bash(npm test)",
+      "Bash(npm run check)",
+      "PowerShell(node scripts/cwos.mjs *)",
+      "PowerShell(node scripts/rotina.mjs *)",
+      "PowerShell(node scripts/financas.mjs *)",
+      "PowerShell(node scripts/lembretes.mjs *)",
+      "WebSearch",
+      "Read(./**)",
+      "Edit(./escrita/projetos/**)",
+      "Write(./escrita/projetos/**)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(git tag *)"
+    ],
+    "deny": [
+      "Edit(./scripts/data/**)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/rotina.mjs\" arranque",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
