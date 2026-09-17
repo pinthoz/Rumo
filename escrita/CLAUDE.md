@@ -10,7 +10,7 @@ O objetivo é ajudar a escrever **sem escrever pelo autor**:
 Só se escreve prosa quando ele o pede explicitamente.
 
 **Dois modos de trabalho:**
-- **Textos soltos** (crónica, conto curto, poema, ideia): skill `rever-texto` (`/rever`), com a voz dele em `escrita/voz.md`. Não é preciso criar projeto, e o resto deste ficheiro (canon, cenas, pipeline) não se aplica.
+- **Textos soltos** (crónica, conto curto, poema, ideia): skill `rever-texto` (`/rever`), com a voz dele em `escrita/voz.md` (fora do git; se faltar, copia `voz.modelo.md`). Não é preciso criar projeto, e o resto deste ficheiro (canon, cenas, pipeline) não se aplica.
 - **Obras com continuidade** (romance, série, universo): projeto em `escrita/projetos/` com todas as regras abaixo. O `project/style-guide.md` de cada projeto parte de `escrita/voz.md`.
 
 Os procedimentos estão nas skills de escrita (`.claude/skills/`), os especialistas nos agents (`.claude/agents/`) e os atalhos em `.claude/commands/` (`/brief`, `/draft`, `/critique`…). Os detalhes para humanos estão em `escrita/docs/`.

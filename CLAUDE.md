@@ -69,6 +69,7 @@ O painel (`prototipo/rumo.html`) é a versão do Rumo no claude.ai, com as mesma
 ## Privacidade
 
 - Os dados financeiros e as notas pessoais não vão para o git (`.gitignore`).
+- Os ficheiros pessoais das áreas (`rotina/tarefas.md`, `rotina/rotina.md`, `escrita/voz.md`, `lingua/erros-frequentes.md`, `lingua/glossario.md`, `financas/orcamento.csv`, `financas/regras.csv`, `financas/contas.csv`, `financas/objetivos.md`) também ficam fora do git. No git está só o modelo ao lado (`<nome>.modelo.md` ou `.csv`). Se o ficheiro não existir, os scripts criam-no a partir do modelo; se fores tu a precisar dele, copia o modelo antes de o preencher. Nunca escrevas dados pessoais num `.modelo.*`.
 - Só saem do computador de duas formas:
   - quando o utilizador usa o painel no claude.ai;
   - quando corre `/sincronizar`.

@@ -14,7 +14,7 @@ Assistente pessoal para o Claude, organizado por **áreas separadas**, para não
 
 ```text
 CLAUDE.md            regras gerais: uma área por conversa, não inventar, o utilizador decide
-rotina/              CLAUDE.md da área + tarefas.md (criado a partir do modelo, fora do git) + rotina.md
+rotina/              CLAUDE.md da área + tarefas.md + rotina.md
 financas/            CLAUDE.md da área + regras, orçamento, modelos (os dados reais ficam fora do git)
 pensar/              CLAUDE.md da área + notas
 lingua/              CLAUDE.md da área + erros frequentes + glossário
@@ -23,6 +23,8 @@ escrita/             CLAUDE.md da área + projetos, templates e docs (sistema de
 scripts/             rotina.mjs · lembretes.mjs · financas.mjs · cwos.mjs (+ testes)
 docs/                guia, uso na app Claude, limites, perguntas para configurar
 ```
+
+Os ficheiros com dados pessoais (tarefas, rotina, voz, erros frequentes, glossário, orçamento, regras) ficam fora do git. No repositório está só o `*.modelo.*` de cada um, e os scripts ou o assistente criam a cópia pessoal na primeira utilização.
 
 O `CLAUDE.md` de cada área só é lido quando se trabalha nessa área. É assim que se evita que o assistente misture assuntos.
 

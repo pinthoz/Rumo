@@ -6,7 +6,7 @@ Serve para ajudar o utilizador a **fazer menos coisas de cada vez e a acabá-las
 | ficheiro | conteúdo |
 |---|---|
 | `rotina/tarefas.md` | todas as tarefas (caixa de entrada, tarefas, algum dia). Formato no topo do ficheiro. Fica fora do git; os scripts criam-no a partir de `tarefas.modelo.md` se faltar |
-| `rotina/rotina.md` | a rotina-base que ele escolheu (horários, blocos, hábitos) |
+| `rotina/rotina.md` | a rotina-base que ele escolheu (horários, blocos, hábitos). Fora do git; se faltar, copia `rotina.modelo.md` |
 | `rotina/revisoes/AAAA-Www.md` | revisões semanais |
 
 **Lembretes automáticos:** `node scripts/lembretes.mjs instalar|remover|estado|testar` (comando `/lembretes`). São notificações do sistema (Windows e Mac) geradas por script, em horas fixas: manhã, prazo, tarde e semana.

@@ -178,7 +178,7 @@ const resolveTask = (l, r) => (l.feita && !r.feita ? l : r);
 // ---------------------------------------------------------------- finanças
 
 function readCsvTable(file) {
-  const text = readIf(file);
+  const text = readIf(file) ?? readIf(file.replace(/\.csv$/, '.modelo.csv'));
   if (!text) return [];
   const first = text.split(/\r?\n/)[0];
   const sep = first.split(';').length >= first.split(',').length ? ';' : ',';

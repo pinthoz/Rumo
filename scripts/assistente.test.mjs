@@ -327,3 +327,10 @@ test('financas CLI: importar extrato com preâmbulo, sem duplicar; categorizar; 
 
   assert.equal(run('financas.mjs', 'importar', 'nao-existe.csv').code, 2);
 });
+
+test('financas CLI: sem regras.csv, cria-o a partir do modelo', () => {
+  fs.rmSync(file('financas/regras.csv'));
+  write('financas/regras.modelo.csv', 'padrao;categoria\nedp;Casa\n');
+  run('financas.mjs', 'categorizar');
+  assert.equal(fs.readFileSync(file('financas/regras.csv'), 'utf8'), 'padrao;categoria\nedp;Casa\n');
+});

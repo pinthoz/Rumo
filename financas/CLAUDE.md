@@ -6,8 +6,8 @@ Serve para um **controlo financeiro rigoroso**: saber quanto dinheiro existe, pa
 | ficheiro | conteúdo |
 |---|---|
 | `financas/movimentos/AAAA-MM.csv` | movimentos (`data;descricao;valor;categoria;conta`), com o valor negativo para despesas |
-| `financas/regras.csv` | texto da descrição → categoria (categorização automática) |
-| `financas/orcamento.csv` | limite mensal por categoria |
+| `financas/regras.csv` | texto da descrição → categoria (categorização automática); criado a partir de `regras.modelo.csv` |
+| `financas/orcamento.csv` | limite mensal por categoria; criado a partir de `orcamento.modelo.csv` |
 | `financas/contas.csv` | saldos por conta (à ordem, poupança, investimento, dívida) com data (criado a partir de `contas.modelo.csv`) |
 | `financas/objetivos.md` | objetivos, fundo de emergência, perfil de risco (criado a partir de `objetivos.modelo.md`, preenchido com ele) |
 | `financas/notas/` | notas de pesquisa (investimentos, impostos), sempre com fonte e data |

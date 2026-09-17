@@ -10,6 +10,8 @@ Corretor e revisor de **português europeu** e **inglês**, em dois registos:
 | `lingua/erros-frequentes.md` | erros que o utilizador repete. Atualiza-se quando ele aceita uma correção, para ele aprender e não só corrigir |
 | `lingua/glossario.md` | termos e expressões preferidos (empresa, área profissional, pt↔en) |
 
+Os dois ficheiros ficam fora do git. Se faltarem, copia o `.modelo.md` ao lado.
+
 ## Regras desta área
 1. **Corrigir sem mudar a voz nem o sentido.** Primeiro gramática e ortografia; só depois estilo, e só se o registo o pedir ou se ele pedir.
 2. **Explicar cada correção numa linha.** Com a regra, não com um "soa melhor".

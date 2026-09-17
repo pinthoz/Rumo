@@ -14,3 +14,11 @@ node_modules/
 
 # Estado da sincronização com o Rumo
 .sync/
+
+# Ficheiros pessoais criados a partir do <nome>.modelo.* ao lado
+rotina/rotina.md
+escrita/voz.md
+lingua/erros-frequentes.md
+lingua/glossario.md
+financas/orcamento.csv
+financas/regras.csv
