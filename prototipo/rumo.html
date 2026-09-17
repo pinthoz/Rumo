@@ -1,0 +1,1970 @@
+<title>Rumo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  :root {
+    --ground: #f2f5f4;
+    --surface: #ffffff;
+    --surface-2: #e8eeec;
+    --ink: #16302b;
+    --muted: #5b6f6a;
+    --line: #d3dcd9;
+    --accent: #c86f12;
+    --accent-soft: #fbead6;
+    --accent-ink: #ffffff;
+    --good: #2c8456;
+    --warn: #a86f00;
+    --bad: #b83b30;
+    --focus-ring: #1f6f62;
+    --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+    --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+    --r: 10px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0e1513; --surface: #16201d; --surface-2: #1e2a27; --ink: #e3ebe8; --muted: #93a8a1;
+      --line: #2b3a36; --accent: #f2a04a; --accent-soft: #3a2a17; --accent-ink: #1a1206;
+      --good: #5cc28b; --warn: #e0b04a; --bad: #ef7a6e; --focus-ring: #7fd1c1;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0e1513; --surface: #16201d; --surface-2: #1e2a27; --ink: #e3ebe8; --muted: #93a8a1;
+    --line: #2b3a36; --accent: #f2a04a; --accent-soft: #3a2a17; --accent-ink: #1a1206;
+    --good: #5cc28b; --warn: #e0b04a; --bad: #ef7a6e; --focus-ring: #7fd1c1;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { background: var(--ground); color: var(--ink); }
+  body { margin: 0; font: 16px/1.5 var(--font-body); padding-inline: 16px; padding-block: 20px 48px; }
+  h1, h2, h3 { font-family: var(--font-display); margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+  h1 { font-size: 2rem; line-height: 1.1; }
+  h2 { font-size: 1.3rem; }
+  h3 { font-size: 1rem; }
+  p { margin: 0; }
+  .muted { color: var(--muted); }
+  .small { font-size: 0.85rem; }
+  .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 700; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+  /* estrutura */
+  .shell { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 40px; align-items: start; }
+  .side {
+    position: sticky; top: calc(env(safe-area-inset-top, 0px) + 20px);
+    display: grid; gap: 20px; align-content: start; padding-right: 24px; border-right: 1px solid var(--line);
+    max-height: calc(100vh - 40px); overflow-y: auto;
+  }
+  .app { width: 100%; max-width: 740px; margin: 0 auto; display: grid; gap: 20px; }
+  .top { display: grid; gap: 6px; }
+  .top .date { font-size: 0.92rem; }
+  .mark { display: inline-flex; align-items: center; gap: 10px; }
+  .mark svg { width: 30px; height: 30px; flex: none; }
+
+  .tabs { display: grid; gap: 2px; }
+  .group-label { margin: 12px 12px 4px; }
+  .group-label:first-child { margin-top: 0; }
+  .tab { border: 0; border-left: 3px solid transparent; background: transparent; padding: 8px 12px; border-radius: 10px; cursor: pointer; text-align: left; color: var(--muted); display: grid; gap: 0; }
+  .tab:hover { background: var(--surface-2); }
+  .tab-name { font-weight: 700; }
+  .tab-hint { font-size: 0.78rem; }
+  .tab[aria-selected="true"] { background: var(--surface); color: var(--ink); border-left-color: var(--accent); box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); }
+  .tab[aria-selected="true"] .tab-hint { color: var(--muted); }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-left: 6px; vertical-align: middle; }
+
+  @media (max-width: 800px) {
+    .shell { grid-template-columns: 1fr; gap: 16px; }
+    .side { position: static; max-height: none; overflow: visible; padding-right: 0; border-right: 0; gap: 12px; }
+    .top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 8px 16px; }
+    .tabs { display: flex; gap: 4px; overflow-x: auto; padding: 4px; background: var(--surface-2); border-radius: 12px; }
+    .group-label, .tab-hint { display: none; }
+    .tab { border-left: 0; white-space: nowrap; padding: 8px 12px; text-align: center; }
+  }
+
+  /* blocos */
+  .banner { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: var(--r); background: var(--accent-soft); font-size: 0.92rem; }
+  .banner.plain { background: var(--surface-2); }
+  .section { display: grid; gap: 12px; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .between { justify-content: space-between; }
+  .grow { flex: 1 1 180px; min-width: 0; }
+  .view-head { display: grid; gap: 4px; }
+
+  input[type="text"], input[type="number"], input[type="date"], select, textarea {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; min-width: 0;
+  }
+  input[type="file"] { max-width: 100%; }
+  textarea { width: 100%; min-height: 120px; resize: vertical; line-height: 1.5; }
+  .btn { border: 1px solid var(--line); background: var(--surface); padding: 9px 14px; border-radius: 8px; cursor: pointer; font-weight: 700; }
+  .btn:hover { background: var(--surface-2); }
+  .btn.primary { background: var(--ink); color: var(--ground); border-color: var(--ink); }
+  .btn.accent { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn.small { padding: 5px 10px; font-size: 0.85rem; }
+  .btn.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  details.panel { display: block; }
+  details.panel > summary { cursor: pointer; font-weight: 700; list-style: none; display: flex; align-items: center; gap: 10px; }
+  details.panel > summary::-webkit-details-marker { display: none; }
+  details.panel > summary::before { content: ""; flex: none; width: 0; height: 0; border-left: 7px solid currentColor; border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
+  details.panel[open] > summary::before { transform: rotate(90deg); }
+  details.panel[open] > * + * { margin-top: 12px; }
+
+  /* tarefas */
+  .focus-list, .task-list { list-style: none; margin: 0; padding: 0; display: grid; }
+  .focus-list { gap: 10px; }
+  .focus-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 14px; border-radius: var(--r); background: var(--surface); border: 1px solid var(--line); }
+  .focus-item .rank { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; color: var(--accent); width: 1.4em; text-align: center; }
+  .title { font-weight: 700; overflow-wrap: anywhere; }
+  .focus-item .title { font-size: 1.05rem; }
+  .task { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 2px; border-top: 1px solid var(--line); }
+  .task:first-child { border-top: 0; }
+  .task .title { font-weight: 400; }
+  .task.done .title { text-decoration: line-through; color: var(--muted); }
+  .check { width: 22px; height: 22px; accent-color: var(--good); cursor: pointer; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+  .chip { font-size: 0.75rem; padding: 1px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+  .chip.late { background: color-mix(in srgb, var(--bad) 16%, transparent); color: var(--bad); font-weight: 700; }
+  .chip.today { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+  .chip.chronic { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); font-weight: 700; }
+  .actions { display: flex; flex-wrap: wrap; gap: 4px; justify-content: end; }
+  .options { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
+  .options .btn { text-align: left; font-weight: 400; }
+  .options .btn strong { display: block; }
+  .steps { margin: 0; padding-left: 1.3em; display: grid; gap: 4px; }
+
+  /* foco */
+  .timer { justify-items: center; }
+  .ring { width: min(260px, 70vw); aspect-ratio: 1; max-width: 100%; position: relative; }
+  .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring .clock { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; padding: 0 24px; }
+  .ring .clock .num { font-size: 2.6rem; font-weight: 600; }
+  .presets { display: flex; gap: 6px; }
+  .presets .btn[aria-pressed="true"], .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); }
+  .presets .btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+  /* números */
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px; display: grid; gap: 2px; align-content: start; }
+  .kpi .num { font-size: 1.25rem; font-weight: 600; }
+  .kpi.lead { background: var(--ink); color: var(--ground); border-color: var(--ink); }
+  .kpi.lead .label { color: color-mix(in srgb, var(--ground) 70%, transparent); }
+  .budget { display: grid; gap: 12px; }
+  .bline { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; }
+  .bar { grid-column: 1 / -1; height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+  .bar > span { display: block; height: 100%; border-radius: 99px; background: var(--good); }
+  .bar > span.warn { background: var(--warn); }
+  .bar > span.bad { background: var(--bad); }
+  .limit-input { width: 6.5em; text-align: right; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+  th, td { text-align: left; padding: 7px 6px; border-top: 1px solid var(--line); vertical-align: middle; }
+  th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); border-top: 0; }
+  td.v, th.v { text-align: right; white-space: nowrap; }
+  td select { padding: 4px 6px; max-width: 11em; }
+  .pos { color: var(--good); }
+  .neg-flag { color: var(--bad); font-weight: 700; }
+  .warn-text { color: var(--warn); font-weight: 700; }
+
+  /* claude */
+  .seg { display: inline-flex; flex-wrap: wrap; background: var(--surface-2); padding: 3px; border-radius: 9px; }
+  .seg button { border: 0; background: transparent; padding: 6px 12px; border-radius: 7px; cursor: pointer; font-weight: 700; color: var(--muted); }
+  .result { white-space: pre-wrap; background: var(--surface-2); border-radius: 8px; padding: 12px; overflow-wrap: anywhere; }
+  .fix { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 8px 0; border-top: 1px solid var(--line); align-items: center; }
+  .fix:first-child { border-top: 0; }
+  del { color: var(--bad); }
+  ins { color: var(--good); text-decoration: none; font-weight: 700; }
+  .chat { display: grid; gap: 10px; max-height: 520px; overflow-y: auto; padding-right: 4px; }
+  .bubble { padding: 10px 14px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 88%; }
+  .bubble.me { justify-self: end; background: var(--ink); color: var(--ground); border-bottom-right-radius: 4px; }
+  .bubble.ai { justify-self: start; background: var(--surface-2); border-bottom-left-radius: 4px; }
+  .note { font-size: 0.85rem; color: var(--muted); }
+
+  footer { font-size: 0.82rem; color: var(--muted); display: grid; gap: 4px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  @media (max-width: 480px) {
+    h1 { font-size: 1.6rem; }
+    .kpis { grid-template-columns: 1fr 1fr; }
+    .kpi.lead { grid-column: 1 / -1; }
+    .focus-item { grid-template-columns: auto minmax(0, 1fr); }
+    .focus-item .actions { grid-column: 1 / -1; justify-content: start; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .ring circle.progress { transition: stroke-dashoffset 0.9s linear; }
+    details.panel > summary::before { transition: transform 0.15s ease; }
+  }
+</style>
+
+<div class="shell">
+<aside class="side">
+  <header class="top">
+    <div class="mark">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" stroke-width="2"></circle>
+        <path d="M16 6 L19.5 16 L16 26 L12.5 16 Z" fill="var(--accent)"></path>
+        <circle cx="16" cy="16" r="2" fill="var(--surface)"></circle>
+      </svg>
+      <h1>Rumo</h1>
+    </div>
+    <p class="date muted" id="today-label"></p>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Áreas" aria-orientation="vertical" id="tabs"></nav>
+</aside>
+
+<main class="app">
+  <div id="status" class="banner plain" hidden></div>
+
+  <!-- ============ HOJE ============ -->
+  <section id="view-hoje" class="section" role="tabpanel" aria-labelledby="tab-hoje">
+    <div id="tasks-example" class="banner" hidden>
+      <span><strong>Exemplo.</strong> Estas tarefas são só para mostrar como funciona; nada é guardado.</span>
+      <button class="btn small primary" id="tasks-start">Começar a minha lista</button>
+    </div>
+
+    <form class="row" id="capture-form" autocomplete="off">
+      <label class="sr" for="capture-input">Apontar uma ideia</label>
+      <input class="grow" type="text" id="capture-input" placeholder="Surgiu uma ideia? Aponta aqui e volta ao que estavas a fazer">
+      <button class="btn" type="submit">Apontar</button>
+    </form>
+
+    <div class="section">
+      <div class="row between">
+        <h2>As tuas 3 prioridades</h2>
+        <span class="muted" id="focus-summary"></span>
+      </div>
+      <ol class="focus-list" id="focus-list"></ol>
+    </div>
+
+    <div class="panel" id="unstick" hidden>
+      <div class="row between">
+        <h3 id="unstick-title">Travado</h3>
+        <button class="btn small ghost" id="unstick-close">Fechar</button>
+      </div>
+      <p class="muted">O que está a travar? Escolhe a que mais se parece.</p>
+      <div class="options" id="unstick-options">
+        <button class="btn" data-why="comecar"><strong>Não sei por onde começar</strong><span class="muted small">Dividir em passos pequenos</span></button>
+        <button class="btn" data-why="grande"><strong>É grande ou chata demais</strong><span class="muted small">Dividir e fazer só 5 minutos</span></button>
+        <button class="btn" data-why="falta"><strong>Falta-me alguma coisa</strong><span class="muted small">Informação, documento, pessoa</span></button>
+        <button class="btn" data-why="naoquero"><strong>No fundo, não quero ou não preciso</strong><span class="muted small">Largar também é decidir</span></button>
+      </div>
+      <div id="unstick-body" class="section"></div>
+    </div>
+
+    <details class="panel" id="inbox-panel">
+      <summary>Caixa de entrada <span class="chip" id="inbox-count">0</span></summary>
+      <p class="muted">Decide cada uma: passa a tarefa, fica para "algum dia", ou apaga.</p>
+      <ul class="task-list" id="inbox-list"></ul>
+    </details>
+
+    <details class="panel">
+      <summary>Nova tarefa</summary>
+      <form class="section" id="task-form" autocomplete="off">
+        <label class="sr" for="task-title">Título</label>
+        <input type="text" id="task-title" placeholder="Ex.: Pagar a renda" required>
+        <div class="row">
+          <label class="muted" for="task-prio">Prioridade</label>
+          <select id="task-prio"><option value="1">Alta</option><option value="2" selected>Normal</option><option value="3">Baixa</option></select>
+          <label class="muted" for="task-due">Prazo</label>
+          <input type="date" id="task-due">
+          <label class="muted" for="task-rep">Repete</label>
+          <select id="task-rep">
+            <option value="">Não</option><option value="diaria">Todos os dias</option><option value="semanal">Todas as semanas</option>
+            <option value="mensal">Todos os meses</option><option value="anual">Todos os anos</option>
+          </select>
+        </div>
+        <div><button class="btn primary" type="submit">Adicionar</button></div>
+      </form>
+    </details>
+
+    <details class="panel">
+      <summary>Todas as tarefas <span class="chip" id="all-count">0</span></summary>
+      <ul class="task-list" id="all-list"></ul>
+    </details>
+
+    <details class="panel">
+      <summary>Ficheiros (tarefas.md)</summary>
+      <p class="muted small">Para usar com o assistente no computador. O melhor é o comando <span class="num">/sincronizar</span> no Claude Code, que junta os dois lados sem perder nada. Estes botões são a alternativa manual: importar <strong>substitui</strong> a lista desta página.</p>
+      <div class="row">
+        <button class="btn" id="md-export" type="button">Descarregar tarefas.md</button>
+        <label class="btn" for="md-file">Importar tarefas.md…</label>
+        <input type="file" id="md-file" accept=".md,text/markdown,text/plain" class="sr">
+      </div>
+      <p class="note" id="md-note"></p>
+    </details>
+  </section>
+
+  <!-- ============ FOCO ============ -->
+  <section id="view-foco" class="section" role="tabpanel" aria-labelledby="tab-foco" hidden>
+    <div class="panel">
+      <label class="label" for="focus-task">Uma coisa só</label>
+      <select id="focus-task"></select>
+      <label class="sr" for="focus-step">Primeiro passo</label>
+      <input type="text" id="focus-step" placeholder="Primeiro passo de 2–5 minutos (ex.: abrir o portal e encontrar a senha)">
+    </div>
+    <div class="timer panel">
+      <div class="ring" aria-live="polite">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <circle cx="60" cy="60" r="52" fill="none" stroke="var(--surface-2)" stroke-width="10"></circle>
+          <circle class="progress" id="ring-progress" cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round"></circle>
+        </svg>
+        <div class="clock">
+          <span class="num" id="clock">25:00</span>
+          <span class="muted small" id="clock-caption">pronto a começar</span>
+        </div>
+      </div>
+      <div class="presets" role="group" aria-label="Duração">
+        <button class="btn small" data-min="10" aria-pressed="false">10 min</button>
+        <button class="btn small" data-min="25" aria-pressed="true">25 min</button>
+        <button class="btn small" data-min="50" aria-pressed="false">50 min</button>
+      </div>
+      <div class="row">
+        <button class="btn accent" id="timer-start">Começar</button>
+        <button class="btn" id="timer-stop" hidden>Parar</button>
+      </div>
+      <p class="muted" id="focus-end-msg" hidden></p>
+      <p class="muted small" id="blocks-today"></p>
+    </div>
+    <div class="panel">
+      <h3>Antes de carregar em Começar</h3>
+      <ol class="steps muted">
+        <li>O que te passa pela cabeça vai para "Apontar", no separador Hoje.</li>
+        <li>Telemóvel longe, só as janelas desta tarefa abertas.</li>
+        <li>Se custa arrancar, escolhe 10 minutos. Arrancar conta mais do que a duração.</li>
+        <li>Depois de 3 ou 4 blocos seguidos, faz uma pausa longa (15 a 30 minutos).</li>
+      </ol>
+      <p class="note">O aviso do fim do bloco só aparece com esta página aberta. Para lembretes do sistema (manhã, tarde, domingo), usa o assistente no computador (<span class="num">/lembretes</span>).</p>
+    </div>
+  </section>
+
+  <!-- ============ SEMANA ============ -->
+  <section id="view-semana" class="section" role="tabpanel" aria-labelledby="tab-semana" hidden>
+    <div class="view-head">
+      <h2>Revisão da semana</h2>
+      <p class="muted">15 minutos: reconhecer o que foi feito, limpar o que ficou, escolher 3 prioridades e uma melhoria.</p>
+    </div>
+    <div class="kpis">
+      <div class="kpi lead"><span class="label">Feitas em 7 dias</span><span class="num" id="w-done">0</span></div>
+      <div class="kpi"><span class="label">Atrasadas</span><span class="num" id="w-late">0</span></div>
+      <div class="kpi"><span class="label">Por triar</span><span class="num" id="w-inbox">0</span></div>
+    </div>
+    <div class="panel">
+      <h3>1. O que ficou feito</h3>
+      <ul class="task-list" id="w-done-list"></ul>
+    </div>
+    <div class="panel">
+      <h3>2. Limpar: atrasadas e mais adiadas</h3>
+      <p class="muted small">Para cada uma: nova data, algum dia, ou apagar.</p>
+      <ul class="task-list" id="w-clean-list"></ul>
+    </div>
+    <div class="panel">
+      <h3>3. As 3 prioridades da próxima semana</h3>
+      <p class="muted small">Marca até 3. Passam a prioridade alta.</p>
+      <ul class="task-list" id="w-pick-list"></ul>
+    </div>
+    <div class="panel">
+      <h3>4. Uma melhoria</h3>
+      <label class="muted" for="w-improve">O que mais atrapalhou esta semana, e o que muda na próxima?</label>
+      <input type="text" id="w-improve" placeholder="Ex.: deixar o telemóvel na outra sala durante os blocos de foco">
+      <div><button class="btn primary" id="w-save">Guardar revisão</button></div>
+      <ul class="task-list" id="w-history"></ul>
+    </div>
+  </section>
+
+  <!-- ============ FINANÇAS: MÊS ============ -->
+  <section id="view-mes" class="section" role="tabpanel" aria-labelledby="tab-mes" hidden>
+    <div id="fin-example" class="banner" hidden>
+      <span><strong>Exemplo.</strong> Valores fictícios para mostrar como funciona; nada é guardado.</span>
+      <button class="btn small primary" id="fin-start">Começar com os meus dados</button>
+    </div>
+    <div class="row between">
+      <div class="row">
+        <label class="sr" for="month-select">Mês</label>
+        <select id="month-select"></select>
+      </div>
+      <span class="muted" id="fin-days"></span>
+    </div>
+    <div class="kpis">
+      <div class="kpi lead"><span class="label">Ainda podes gastar</span><span class="num" id="k-left">—</span><span id="k-perday" class="small"></span></div>
+      <div class="kpi"><span class="label">Receitas</span><span class="num" id="k-in">—</span></div>
+      <div class="kpi"><span class="label">Despesas</span><span class="num" id="k-out">—</span><span id="k-rate" class="small muted"></span></div>
+    </div>
+
+    <div class="panel">
+      <div class="row between"><h3>Orçamento por categoria</h3><span class="muted small">limite mensal, em €</span></div>
+      <div class="budget" id="budget"></div>
+      <p class="note">"Ainda podes gastar" conta só as categorias com limite. As transferências entre contas tuas não contam.</p>
+    </div>
+
+    <div class="panel">
+      <div class="row between"><h3>Despesas fixas e subscrições</h3><span class="muted small" id="rec-total"></span></div>
+      <div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Meses</th><th class="v">Por mês</th></tr></thead><tbody id="rec-body"></tbody></table></div>
+      <p class="note">Repetidas em pelo menos 2 dos últimos 3 meses com dados. A deteção é pela descrição: confirma cada linha.</p>
+    </div>
+
+    <details class="panel">
+      <summary>Registar movimento</summary>
+      <form class="section" id="mov-form" autocomplete="off">
+        <div class="row">
+          <label class="sr" for="mov-date">Data</label>
+          <input type="date" id="mov-date" required>
+          <label class="sr" for="mov-desc">Descrição</label>
+          <input class="grow" type="text" id="mov-desc" placeholder="Descrição (ex.: Continente)" required>
+        </div>
+        <div class="row">
+          <div class="seg" role="group" aria-label="Tipo" id="kind-seg">
+            <button type="button" data-kind="out" aria-pressed="true">Despesa</button>
+            <button type="button" data-kind="in" aria-pressed="false">Receita</button>
+          </div>
+          <label class="sr" for="mov-value">Valor em euros</label>
+          <input type="number" id="mov-value" step="0.01" min="0.01" placeholder="0,00 €" required style="width: 8em">
+          <label class="sr" for="mov-cat">Categoria</label>
+          <select id="mov-cat"></select>
+          <label class="sr" for="mov-acc">Conta</label>
+          <input type="text" id="mov-acc" placeholder="Conta (ex.: dinheiro)" style="width: 10em">
+          <button class="btn primary" type="submit">Registar</button>
+        </div>
+      </form>
+    </details>
+
+    <details class="panel">
+      <summary>Importar extrato do banco (CSV)</summary>
+      <p class="muted small">No homebanking, exporta os movimentos em CSV. A página encontra as colunas de data, descrição e valor (ou débito/crédito), aceita números à portuguesa e não duplica movimentos que já existam.</p>
+      <div class="row">
+        <label class="sr" for="imp-file">Ficheiro CSV</label>
+        <input type="file" id="imp-file" accept=".csv,text/csv,text/plain">
+        <label class="sr" for="imp-acc">Nome da conta</label>
+        <input type="text" id="imp-acc" placeholder="Nome da conta (ex.: CGD)" style="width: 12em">
+        <button class="btn primary" id="imp-go">Importar</button>
+      </div>
+      <details>
+        <summary class="muted small">O banco usa outros nomes de colunas?</summary>
+        <div class="row" style="margin-top: 8px">
+          <input type="text" id="imp-col-date" placeholder="coluna da data" style="width: 11em">
+          <input type="text" id="imp-col-desc" placeholder="coluna da descrição" style="width: 11em">
+          <input type="text" id="imp-col-val" placeholder="coluna do valor" style="width: 11em">
+        </div>
+      </details>
+      <p id="imp-result" class="muted" hidden></p>
+    </details>
+
+    <details class="panel" id="mov-panel">
+      <summary>Movimentos do mês <span class="chip" id="mov-count">0</span> <span class="chip late" id="uncat-count" hidden></span></summary>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th class="v">Valor</th><th><span class="sr">Ações</span></th></tr></thead>
+          <tbody id="mov-body"></tbody>
+        </table>
+      </div>
+      <div class="row"><button class="btn small" id="csv-export" type="button">Descarregar este mês (CSV)</button><span class="note" id="csv-note"></span></div>
+    </details>
+
+    <details class="panel">
+      <summary>Regras de categorização <span class="chip" id="rules-count">0</span></summary>
+      <p class="muted small">Se a descrição contiver o texto, recebe a categoria. A primeira regra que coincide ganha, por isso as mais específicas vão primeiro (ex.: "uber eats" antes de "uber").</p>
+      <form class="row" id="rule-form" autocomplete="off">
+        <input type="text" id="rule-pat" placeholder="texto (ex.: continente)" required style="width: 12em">
+        <select id="rule-cat"></select>
+        <button class="btn" type="submit">Adicionar regra</button>
+        <button class="btn ghost" type="button" id="rules-apply">Aplicar aos movimentos sem categoria</button>
+      </form>
+      <ul class="task-list" id="rules-list"></ul>
+    </details>
+  </section>
+
+  <!-- ============ FINANÇAS: PATRIMÓNIO ============ -->
+  <section id="view-contas" class="section" role="tabpanel" aria-labelledby="tab-contas" hidden>
+    <div class="view-head">
+      <h2>Quanto dinheiro tenho</h2>
+      <p class="muted">Saldos que tu atualizas (à ordem, poupança, investimentos, dívidas em negativo).</p>
+    </div>
+    <div class="kpis" id="acc-kpis"></div>
+    <div class="panel">
+      <div class="table-wrap"><table>
+        <thead><tr><th>Conta</th><th>Tipo</th><th class="v">Saldo</th><th>Atualizado</th><th><span class="sr">Ações</span></th></tr></thead>
+        <tbody id="acc-body"></tbody>
+      </table></div>
+      <form class="row" id="acc-form" autocomplete="off">
+        <input type="text" id="acc-name" placeholder="Conta (ex.: Poupança CGD)" required class="grow">
+        <select id="acc-type"><option>à ordem</option><option>poupança</option><option>investimento</option><option>dívida</option><option>dinheiro</option></select>
+        <input type="number" id="acc-bal" step="0.01" placeholder="Saldo €" required style="width: 9em">
+        <button class="btn primary" type="submit">Adicionar</button>
+      </form>
+    </div>
+    <div class="panel">
+      <h3>Objetivos e perfil</h3>
+      <p class="muted small">Fundo de emergência (quantos meses de despesas), dívidas e taxas, objetivos com prazo, quanto aguentarias ver descer um investimento sem vender. O separador Investir usa este texto.</p>
+      <label class="sr" for="goals">Objetivos</label>
+      <textarea id="goals" placeholder="Ex.: Fundo de emergência: tenho 1 mês, quero 6. Sem dívidas além do crédito à habitação. Objetivo: 10 000 € para entrada de casa em 3 anos. Não aguentaria perder mais de 10%."></textarea>
+      <div class="row"><button class="btn" id="goals-save">Guardar</button><span class="muted small" id="goals-note"></span></div>
+    </div>
+  </section>
+
+  <!-- ============ FINANÇAS: INVESTIR ============ -->
+  <section id="view-investir" class="section" role="tabpanel" aria-labelledby="tab-investir" hidden>
+    <div class="view-head">
+      <h2>Aprender a investir</h2>
+      <p class="muted">Explica e compara tipos de produto, riscos e perguntas a fazer. Não dá ordens de compra.</p>
+    </div>
+    <div class="banner">
+      <span>O Claude aqui <strong>não tem acesso à internet</strong>: não dá taxas, rendimentos nem regras fiscais atuais. Confirma sempre no Portal do Cliente Bancário, na CMVM, no IGCP ou no Portal das Finanças, e fala com um profissional certificado antes de decisões importantes.</span>
+    </div>
+    <div class="panel">
+      <label class="label" for="inv-q">A tua pergunta</label>
+      <textarea id="inv-q" placeholder="Ex.: Tenho 3 000 € parados na conta à ordem. Que tipos de opção existem e o que devo saber antes?"></textarea>
+      <label class="row small muted"><input type="checkbox" id="inv-ctx" checked> Usar os meus objetivos e o saldo mensal médio</label>
+      <div class="row">
+        <button class="btn primary" id="inv-go">Perguntar aqui</button>
+        <button class="btn" id="inv-stop" hidden>Parar</button>
+        <button class="btn" id="inv-web" type="button">Pesquisar no Claude (com fontes)</button>
+        <span class="note" id="inv-note"></span>
+      </div>
+      <div id="inv-web-out" class="section" hidden></div>
+    </div>
+    <div class="panel" id="inv-out" hidden><div class="result" id="inv-result"></div></div>
+  </section>
+
+  <!-- ============ PENSAR ============ -->
+  <section id="view-pensar" class="section" role="tabpanel" aria-labelledby="tab-pensar" hidden>
+    <div class="view-head">
+      <h2>Pensar em voz alta</h2>
+      <p class="muted">Um parceiro que percebe a tua posição, questiona a lógica e mostra o melhor argumento contrário. Um tema de cada vez.</p>
+    </div>
+    <p class="note">Sem acesso à internet: o que depender de dados atuais vem marcado como [Não verificado].</p>
+    <div class="panel">
+      <div class="chat" id="chat" aria-live="polite"></div>
+      <label class="sr" for="chat-in">A tua mensagem</label>
+      <textarea id="chat-in" placeholder="Ex.: Acho que trabalhar a partir de casa baixa a produtividade."></textarea>
+      <div class="row">
+        <button class="btn primary" id="chat-go">Enviar</button>
+        <button class="btn" id="chat-stop" hidden>Parar</button>
+        <button class="btn ghost" id="chat-close">Fechar o tema e resumir</button>
+        <button class="btn ghost" id="chat-new">Novo tema</button>
+        <button class="btn ghost" id="chat-web" type="button">Verificar factos no Claude</button>
+        <span class="note" id="chat-note"></span>
+      </div>
+      <div id="chat-web-out" class="section" hidden></div>
+    </div>
+    <details class="panel">
+      <summary>Resumos guardados <span class="chip" id="notes-count">0</span></summary>
+      <ul class="task-list" id="notes-list"></ul>
+    </details>
+  </section>
+
+  <!-- ============ CORRETOR ============ -->
+  <section id="view-corretor" class="section" role="tabpanel" aria-labelledby="tab-corretor" hidden>
+    <div class="panel">
+      <div class="row between">
+        <div class="seg" role="group" aria-label="Língua" id="lang-seg">
+          <button type="button" data-v="pt" aria-pressed="true">Português</button>
+          <button type="button" data-v="en-uk" aria-pressed="false">English (UK)</button>
+          <button type="button" data-v="en-us" aria-pressed="false">English (US)</button>
+        </div>
+        <div class="seg" role="group" aria-label="Registo" id="reg-seg">
+          <button type="button" data-v="pessoal" aria-pressed="false">Pessoal</button>
+          <button type="button" data-v="profissional" aria-pressed="true">Profissional</button>
+        </div>
+      </div>
+      <label class="sr" for="fix-text">Texto a corrigir</label>
+      <textarea id="fix-text" placeholder="Cola aqui o email ou a mensagem.">Boa tarde,
+
+Venho por este meio informar que á reunião de amanhã foi adiada. Se tiver-mos alguma duvida entraremos em contacto consigo.
+
+Cumprimentos</textarea>
+      <div class="row">
+        <button class="btn primary" id="fix-go">Corrigir</button>
+        <button class="btn" id="fix-stop" hidden>Parar</button>
+        <span class="note" id="fix-note">Corrige erros sem mudar o sentido nem a tua voz.</span>
+      </div>
+    </div>
+    <div class="panel" id="fix-out" hidden>
+      <div class="row between"><h3>Texto corrigido</h3><button class="btn small" id="fix-copy">Copiar</button></div>
+      <div class="result" id="fix-result"></div>
+      <h3>O que mudou e porquê</h3>
+      <div id="fix-list"></div>
+    </div>
+    <details class="panel">
+      <summary>Os meus erros frequentes <span class="chip" id="err-count">0</span></summary>
+      <p class="muted small">Guarda aqui as correções que aceitas para aprenderes com elas. As que se repetem sobem na lista.</p>
+      <ul class="task-list" id="err-list"></ul>
+    </details>
+  </section>
+
+  <!-- ============ ESCRITA ============ -->
+  <section id="view-escrita" class="section" role="tabpanel" aria-labelledby="tab-escrita" hidden>
+    <div class="view-head">
+      <h2>Escrever como tu escreves</h2>
+      <p class="muted">Revê coerência e tom, e ajuda a desbloquear. Não escreve por ti.</p>
+    </div>
+    <div class="panel">
+      <div class="seg" role="group" aria-label="O que queres" id="wr-seg">
+        <button type="button" data-v="coerencia" aria-pressed="true">Está coerente?</button>
+        <button type="button" data-v="tom" aria-pressed="false">Soa a mim?</button>
+        <button type="button" data-v="desbloquear" aria-pressed="false">Estou bloqueado</button>
+      </div>
+      <label class="sr" for="wr-text">Texto ou ideia</label>
+      <textarea id="wr-text" placeholder="Cola o texto (ou descreve a ideia e onde te bloqueaste)."></textarea>
+      <div class="row">
+        <button class="btn primary" id="wr-go">Rever</button>
+        <button class="btn" id="wr-stop" hidden>Parar</button>
+        <span class="note" id="wr-note"></span>
+      </div>
+    </div>
+    <div class="panel" id="wr-out" hidden><div class="result" id="wr-result"></div></div>
+
+    <details class="panel">
+      <summary>A minha voz <span class="chip" id="voice-state">por construir</span></summary>
+      <p class="muted small">Cola 3 a 5 textos teus, um de cada vez. O perfil descreve como escreves, com exemplos teus, e serve de referência para "Soa a mim?". Só conta o que tu confirmares.</p>
+      <label class="sr" for="voice-sample">Texto teu</label>
+      <textarea id="voice-sample" placeholder="Um texto que consideres representativo."></textarea>
+      <div class="row">
+        <button class="btn" id="voice-add">Adicionar amostra</button>
+        <button class="btn primary" id="voice-build">Gerar perfil</button>
+        <button class="btn" id="voice-stop" hidden>Parar</button>
+        <span class="note" id="voice-note"></span>
+      </div>
+      <ul class="task-list" id="voice-samples"></ul>
+      <div id="voice-profile-wrap" hidden class="section">
+        <h3>Perfil</h3>
+        <div class="result" id="voice-profile"></div>
+        <label class="row small"><input type="checkbox" id="voice-ok"> Revi o perfil e reconheço-me nele</label>
+      </div>
+    </details>
+  </section>
+
+  <footer>
+    <p>Protótipo. Os teus dados ficam no teu espaço privado desta página: nem quem a criou os vê.</p>
+    <p>As contas, as prioridades e a importação são feitas pela página. O Claude (a tua conta) só é usado em Travado, Investir, Pensar, Corretor e Escrita, sempre depois de carregares num botão.</p>
+  </footer>
+</main>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // =========================================================== utilidades
+  const $ = (id) => document.getElementById(id);
+  const pad = (n) => String(n).padStart(2, "0");
+  const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const TODAY = iso(new Date());
+  const MONTH = TODAY.slice(0, 7);
+  const addDays = (s, n) => { const d = new Date(s + "T12:00:00"); d.setDate(d.getDate() + n); return iso(d); };
+  const addMonths = (m, n) => { const [y, mo] = m.split("-").map(Number); const d = new Date(y, mo - 1 + n, 1); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; };
+  const daysBetween = (a, b) => Math.round((new Date(b + "T12:00:00") - new Date(a + "T12:00:00")) / 86400000);
+  const newId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+  const fold = (s) => String(s ?? "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().trim();
+  const money = (n) => { const [i, d] = Math.abs(n).toFixed(2).split("."); return `${n < 0 ? "−" : ""}${i.replace(/\B(?=(\d{3})+(?!\d))/g, " ")},${d} €`; };
+  const shortDate = (s) => `${s.slice(8)}/${s.slice(5, 7)}`;
+  const monthLabel = (m) => { const t = new Date(m + "-15T12:00:00").toLocaleDateString("pt-PT", { month: "long", year: "numeric" }); return t.charAt(0).toUpperCase() + t.slice(1); };
+  const weekKey = (s) => { const d = new Date(s + "T12:00:00"); const day = (d.getDay() + 6) % 7; d.setDate(d.getDate() - day + 3); const w1 = new Date(d.getFullYear(), 0, 4); return `${d.getFullYear()}-S${pad(1 + Math.round(((d - w1) / 86400000 - 3 + ((w1.getDay() + 6) % 7)) / 7))}`; };
+
+  function h(tag, attrs = {}, ...kids) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v == null || v === false) continue;
+      if (k === "class") el.className = v;
+      else if (k === "text") el.textContent = v;
+      else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+      else if (k === "value") el.value = v;
+      else el.setAttribute(k, v === true ? "" : v);
+    }
+    for (const kid of kids.flat()) if (kid != null && kid !== false && kid !== "") el.append(kid instanceof Node ? kid : String(kid));
+    return el;
+  }
+  function segGroup(id, onPick) {
+    const btns = [...document.querySelectorAll(`#${id} button`)];
+    btns.forEach((b) => b.addEventListener("click", () => { btns.forEach((x) => x.setAttribute("aria-pressed", String(x === b))); onPick(b.dataset.v ?? b.dataset.kind); }));
+  }
+  function nextDate(s, rep) {
+    if (rep === "diaria") return addDays(s, 1);
+    if (rep === "semanal") return addDays(s, 7);
+    const [y, m, d] = s.split("-").map(Number);
+    const t = new Date(y, m - 1 + (rep === "anual" ? 12 : 1), 1, 12);
+    t.setDate(Math.min(d, new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate()));
+    return iso(t);
+  }
+
+  const weekday = new Intl.DateTimeFormat("pt-PT", { weekday: "long", day: "numeric", month: "long" }).format(new Date());
+  $("today-label").textContent = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+
+  // =========================================================== separadores
+  const VIEWS = [
+    { group: "Rotina", id: "hoje", name: "Hoje", hint: "As 3 prioridades" },
+    { id: "foco", name: "Foco", hint: "Um bloco de cada vez", dot: true },
+    { id: "semana", name: "Semana", hint: "Revisão de 15 minutos" },
+    { group: "Finanças", id: "mes", name: "Mês", hint: "Quanto ainda podes gastar" },
+    { id: "contas", name: "Património", hint: "Contas e objetivos" },
+    { id: "investir", name: "Investir", hint: "Perceber antes de decidir" },
+    { group: "Ideias e escrita", id: "pensar", name: "Pensar", hint: "Discutir com lógica" },
+    { id: "corretor", name: "Corretor", hint: "Português e inglês" },
+    { id: "escrita", name: "Escrita", hint: "Coerência e tom" },
+  ];
+  $("tabs").replaceChildren(...VIEWS.flatMap((v) => [
+    v.group ? h("p", { class: "label group-label", role: "presentation", text: v.group }) : null,
+    h("button", { class: "tab", role: "tab", id: `tab-${v.id}`, "aria-controls": `view-${v.id}`, "aria-selected": "false", onclick: () => selectTab(v.id) },
+      h("span", { class: "tab-name" }, v.name, v.dot ? h("span", { class: "dot", id: "focus-dot", hidden: true }) : null),
+      h("span", { class: "tab-hint", text: v.hint })),
+  ].filter(Boolean)));
+  let currentView = "hoje";
+  function selectTab(name) {
+    currentView = name;
+    for (const v of VIEWS) {
+      const on = v.id === name;
+      $(`tab-${v.id}`).setAttribute("aria-selected", String(on));
+      $(`view-${v.id}`).hidden = !on;
+    }
+    if (name === "foco") renderFocusSelect();
+    if (name === "mes") ensureRecentMonths();
+    try { sessionStorage.setItem("rumo-tab", name); } catch { /* sem armazenamento */ }
+    renderView(name);
+  }
+
+  // =========================================================== exemplos
+  const CATS_OUT = ["Casa", "Supermercado", "Restauração", "Transportes", "Combustível", "Comunicações", "Saúde", "Educação", "Subscrições", "Compras", "Lazer", "Dinheiro", "Outros"];
+  const CATS_IN = ["Salário", "Outros rendimentos"];
+  const TRANSFER = "Transferências";
+  const ALL_CATS = [...CATS_OUT, ...CATS_IN, TRANSFER];
+  const DEFAULT_RULES = [
+    ["uber eats", "Restauração"], ["glovo", "Restauração"], ["bolt food", "Restauração"],
+    ["continente", "Supermercado"], ["pingo doce", "Supermercado"], ["lidl", "Supermercado"], ["mercadona", "Supermercado"], ["auchan", "Supermercado"], ["minipreco", "Supermercado"],
+    ["galp energia", "Casa"], ["edp comercial", "Casa"], ["epal", "Casa"], ["ikea", "Casa"],
+    ["meo", "Comunicações"], ["nos comunicacoes", "Comunicações"], ["vodafone", "Comunicações"],
+    ["via verde", "Transportes"], ["bolt", "Transportes"], ["uber", "Transportes"],
+    ["galp", "Combustível"], ["repsol", "Combustível"], ["farmacia", "Saúde"],
+    ["netflix", "Subscrições"], ["spotify", "Subscrições"], ["disney plus", "Subscrições"],
+    ["worten", "Compras"], ["fnac", "Compras"], ["amazon", "Compras"], ["levantamento", "Dinheiro"],
+  ].map(([p, cat]) => ({ p, cat }));
+
+  const EXAMPLE_TASKS = [
+    { id: "e1", t: "Entregar a declaração de IRS", p: 1, due: addDays(TODAY, -2), rep: "", adiada: 3, feita: null, inbox: false },
+    { id: "e2", t: "Pagar a renda", p: 1, due: TODAY, rep: "mensal", adiada: 0, feita: null, inbox: false },
+    { id: "e3", t: "Responder ao email do contabilista", p: 2, due: addDays(TODAY, 2), rep: "", adiada: 0, feita: null, inbox: false },
+    { id: "e4", t: "Marcar consulta no dentista", p: 3, due: "", rep: "", adiada: 1, feita: null, inbox: false },
+    { id: "e5", t: "Ligar à Joana", p: 2, due: "", rep: "", adiada: 0, feita: addDays(TODAY, -1), inbox: false },
+    { id: "e6", t: "Ideia: crónica sobre a feira da aldeia", p: 2, due: "", rep: "", adiada: 0, feita: null, inbox: true },
+  ];
+  function exampleMonth(m, k) {
+    const x = (d, desc, v, cat) => ({ id: `x${m}${d}${v}`, d: `${m}-${pad(d)}`, desc: `${desc} (exemplo)`, v, cat, acc: "exemplo" });
+    return { mov: [
+      x(1, "Salário", 1450, "Salário"), x(2, "Renda", -650, "Casa"), x(3, "Continente", -86.4 + k * 7, "Supermercado"),
+      x(5, "Jantar fora", -42 - k * 10, "Restauração"), x(6, "Passe", -40, "Transportes"), x(8, "Netflix", -12.99, "Subscrições"),
+      x(10, "Ginásio", -30, "Lazer"), x(12, "Lidl", -63.1 + k * 4, "Supermercado"), x(15, "Poupança", -200, TRANSFER),
+    ].filter((mv) => mv.d <= TODAY || m < MONTH) };
+  }
+  const exampleFinance = () => ({
+    months: { [MONTH]: exampleMonth(MONTH, 0), [addMonths(MONTH, -1)]: exampleMonth(addMonths(MONTH, -1), 1), [addMonths(MONTH, -2)]: exampleMonth(addMonths(MONTH, -2), 2) },
+    index: [addMonths(MONTH, -2), addMonths(MONTH, -1), MONTH],
+    budget: { Casa: 700, Supermercado: 250, Restauração: 60, Transportes: 60, Subscrições: 30, Lazer: 50 },
+    accounts: [
+      { id: "a1", nome: "Conta à ordem (exemplo)", tipo: "à ordem", saldo: 1840.55, data: addDays(TODAY, -3) },
+      { id: "a2", nome: "Poupança (exemplo)", tipo: "poupança", saldo: 2600, data: addDays(TODAY, -50) },
+      { id: "a3", nome: "Cartão de crédito (exemplo)", tipo: "dívida", saldo: -320.4, data: addDays(TODAY, -3) },
+    ],
+  });
+
+  // =========================================================== estado
+  const ex = exampleFinance();
+  const state = {
+    mode: "loading",
+    tasks: structuredClone(EXAMPLE_TASKS), tasksExample: true,
+    finExample: true, month: MONTH,
+    months: ex.months, index: ex.index, budget: ex.budget, rules: structuredClone(DEFAULT_RULES), accounts: ex.accounts,
+    goals: "", reviews: [], notes: [], errors: [], voice: { amostras: [], perfil: "", confirmado: false },
+    blocks: {},
+  };
+
+  // =========================================================== armazenamento
+  let db = null, uid = null;
+  const LOCAL_KEY = "rumo-local-v1";
+  const unsub = {};
+
+  function snapshotForLocal() {
+    return {
+      tasks: state.tasksExample ? null : state.tasks,
+      fin: state.finExample ? null : { months: state.months, index: state.index, budget: state.budget, rules: state.rules, accounts: state.accounts },
+      goals: state.goals, reviews: state.reviews, notes: state.notes, errors: state.errors, voice: state.voice, blocks: state.blocks,
+    };
+  }
+  function localSave() { try { localStorage.setItem(LOCAL_KEY, JSON.stringify(snapshotForLocal())); } catch { /* só memória */ } }
+  // "bussola-local-v2": nome antigo do painel; lido só se ainda não houver dados com o nome novo.
+  function localLoad() { try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || localStorage.getItem("bussola-local-v2") || "null"); } catch { return null; } }
+
+  const writers = {};
+  function save(name, body) {
+    if (state.mode !== "cloud") { localSave(); return; }
+    const w = (writers[name] ||= { busy: false, next: null });
+    w.next = body;
+    if (w.busy) return;
+    w.busy = true;
+    (async () => {
+      while (w.next) {
+        const b = w.next; w.next = null;
+        try { await db.doc(`data/users/${uid}/${name}`).set(b); }
+        catch (e) {
+          flash(saveErrorText(e));
+          if (e && (e.code === "revoked" || e.code === "not_granted")) { toLocal(); break; }
+        }
+      }
+      w.busy = false;
+    })();
+  }
+  async function loadDoc(name) {
+    if (state.mode !== "cloud") return null;
+    try { const s = await db.doc(`data/users/${uid}/${name}`).get(); return s.exists ? structuredClone(s.data()) : null; }
+    catch { return null; }
+  }
+
+  const saveTasks = () => { if (!state.tasksExample) save("tarefas", { items: state.tasks }); };
+  const saveMonth = (m) => { if (!state.finExample) save(`fin-${m}`, { mov: state.months[m]?.mov || [] }); };
+  const saveIndex = () => { if (!state.finExample) save("fin-index", { months: state.index }); };
+  const saveBudget = () => { if (!state.finExample) save("orcamento", { limits: state.budget }); };
+  const saveRules = () => { if (!state.finExample) save("regras", { rules: state.rules }); };
+  const saveAccounts = () => { if (!state.finExample) save("contas", { items: state.accounts }); };
+  const saveGoals = () => save("objetivos", { text: state.goals });
+  const saveReviews = () => save("revisoes", { items: state.reviews.slice(0, 52) });
+  const saveNotes = () => save("pensar", { items: state.notes.slice(0, 40) });
+  const saveErrors = () => save("lingua", { items: state.errors.slice(0, 200) });
+  const saveVoice = () => save("voz", state.voice);
+  const saveBlocks = () => save("foco", { days: Object.fromEntries(Object.entries(state.blocks).filter(([d]) => d >= addDays(TODAY, -30))) });
+
+  function saveErrorText(e) {
+    const code = e && e.code;
+    if (code === "quota_exceeded") return "O espaço desta página está cheio. Apaga dados antigos para continuar a guardar.";
+    if (code === "resource_exhausted") return "Muitas alterações seguidas. Espera uns segundos.";
+    if (code === "revoked" || code === "not_granted") return "Já não é possível guardar nesta página. As alterações ficam só neste navegador.";
+    return "Não foi possível guardar a última alteração. Tenta outra vez daqui a pouco.";
+  }
+  let flashTimer = null;
+  function flash(text, ms = 3500) {
+    const s = $("status"); s.textContent = text; s.hidden = false;
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => { if (state.mode === "local") { s.textContent = LOCAL_TEXT; } else s.hidden = true; }, ms);
+  }
+  const LOCAL_TEXT = "Modo local: os dados ficam só neste navegador e neste dispositivo.";
+
+  function applyFinance(fin) {
+    state.months = fin.months || {}; state.index = fin.index || []; state.budget = fin.budget || {};
+    state.rules = fin.rules || structuredClone(DEFAULT_RULES); state.accounts = fin.accounts || []; state.finExample = false;
+  }
+  function toLocal() {
+    state.mode = "local";
+    Object.values(unsub).forEach((u) => { try { u(); } catch { /* já parado */ } });
+    const saved = localLoad();
+    if (saved) {
+      if (saved.tasks) { state.tasks = saved.tasks; state.tasksExample = false; }
+      if (saved.fin) applyFinance(saved.fin);
+      Object.assign(state, {
+        goals: saved.goals || "", reviews: saved.reviews || [], notes: saved.notes || [], errors: saved.errors || [],
+        voice: saved.voice || state.voice, blocks: saved.blocks || {},
+      });
+    }
+    $("status").textContent = LOCAL_TEXT; $("status").hidden = false;
+    renderAll();
+  }
+
+  function watch(name, apply) {
+    unsub[name]?.();
+    unsub[name] = db.doc(`data/users/${uid}/${name}`).onSnapshot((snap) => {
+      apply(snap.exists ? structuredClone(snap.data()) : null);
+      renderAll();
+    }, (e) => flash(saveErrorText(e)));
+  }
+  function watchMonth(m) {
+    if (state.mode !== "cloud" || state.finExample) return;
+    watch(`fin-${m}`, (d) => { state.months[m] = { mov: d?.mov || [] }; });
+  }
+
+  async function connect() {
+    const c = window.claude;
+    if (!c || typeof c.use !== "function") return toLocal();
+    const [dbNs, userNs] = await Promise.all([c.use("db"), c.use("user")]);
+    const id = userNs ? await userNs.id() : null;
+    if (!dbNs || !id) return toLocal();
+    db = dbNs; uid = id; state.mode = "cloud";
+
+    watch("tarefas", (d) => { if (d) { state.tasks = d.items || []; state.tasksExample = false; } });
+    const idx = await loadDoc("fin-index");
+    if (idx) {
+      const [budget, rules, accounts] = await Promise.all([loadDoc("orcamento"), loadDoc("regras"), loadDoc("contas")]);
+      applyFinance({ months: {}, index: idx.months || [], budget: budget?.limits, rules: rules?.rules, accounts: accounts?.items });
+      watch("fin-index", (d) => { if (d) state.index = d.months || []; });
+      watch("orcamento", (d) => { if (d) state.budget = d.limits || {}; });
+      watch("regras", (d) => { if (d) state.rules = d.rules || []; });
+      watch("contas", (d) => { if (d) state.accounts = d.items || []; });
+      watchMonth(state.month);
+      ensureRecentMonths();
+    }
+    watch("objetivos", (d) => { state.goals = d?.text || ""; if (document.activeElement !== $("goals")) $("goals").value = state.goals; });
+    watch("revisoes", (d) => { state.reviews = d?.items || []; });
+    watch("pensar", (d) => { state.notes = d?.items || []; });
+    watch("lingua", (d) => { state.errors = d?.items || []; });
+    watch("voz", (d) => { if (d) state.voice = { amostras: d.amostras || [], perfil: d.perfil || "", confirmado: !!d.confirmado }; });
+    watch("foco", (d) => { state.blocks = d?.days || {}; });
+    renderAll();
+  }
+
+  const recentLoaded = new Set();
+  async function ensureRecentMonths() {
+    if (state.mode !== "cloud" || state.finExample) return;
+    const want = [0, 1, 2, 3].map((k) => addMonths(state.month, -k)).filter((m) => state.index.includes(m) && m !== state.month && !recentLoaded.has(m));
+    if (!want.length) return;
+    const docs = await Promise.all(want.map((m) => loadDoc(`fin-${m}`)));
+    want.forEach((m, i) => { recentLoaded.add(m); state.months[m] = { mov: docs[i]?.mov || [] }; });
+    renderView("mes");
+  }
+
+  // =========================================================== Claude
+  let sampleFn = null;
+  const SAFE = [
+    "REGRAS GERAIS (cumpre sempre):",
+    "- Responde em português europeu, de forma breve e prática.",
+    "- Não inventes factos, números, datas, leis, estudos ou fontes. Não tens acesso à internet.",
+    "- Se algo depender de informação atual ou verificável (taxas, impostos, preços, estatísticas, notícias), escreve [Não verificado] e diz onde confirmar.",
+    "- Separa o que é facto, o que é opinião e o que é sugestão. Se não souberes, diz que não sabes.",
+    "- Fica no tema pedido. Não tragas outros assuntos.",
+  ].join("\n");
+  function sampleError(code) {
+    if (["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"].includes(code)) return "O Claude não está disponível nesta conta ou não foi autorizado nesta página.";
+    if (code === "rate_limited") return "Muitos pedidos ou limite de utilização atingido. Tenta mais tarde.";
+    if (code === "session_expired") return "A sessão expirou. Volta a entrar no Claude.";
+    if (code === "invalid_json" || code === "empty_completion") return "A resposta veio num formato inesperado. Tenta outra vez.";
+    if (code === "prompt_too_large") return "O texto é demasiado longo. Envia por partes.";
+    if (code === "refused") return "O Claude não quis responder a este pedido.";
+    if (code === "cancelled") return "Parado.";
+    return "Não foi possível responder agora. Tenta outra vez.";
+  }
+  /** Corre um pedido ao Claude ligado a um botão, um botão Parar e uma nota de estado. */
+  async function runAI({ go, stop, note, work }) {
+    if (!sampleFn) { note.textContent = "Esta função só funciona dentro do Claude."; return; }
+    const ctl = new AbortController();
+    const onStop = () => ctl.abort();
+    go.disabled = true; stop.hidden = false; stop.addEventListener("click", onStop, { once: true });
+    note.textContent = "A pensar… (pode demorar alguns segundos)";
+    try {
+      await work(ctl.signal);
+      note.textContent = "";
+    } catch (e) {
+      note.textContent = sampleError(e?.code);
+    } finally {
+      go.disabled = false; stop.hidden = true; stop.removeEventListener("click", onStop);
+    }
+  }
+  function opts(o) { const out = {}; for (const [k, v] of Object.entries(o)) if (v !== undefined) out[k] = v; return out; }
+
+  // =========================================================== HOJE
+  const openTasks = () => state.tasks.filter((t) => !t.feita && !t.inbox);
+  function ranked() {
+    const key = (t) => [t.p, t.due && t.due <= TODAY ? 0 : 1, t.due || "9999", -(t.adiada || 0)];
+    return openTasks().filter((t) => !t.algumDia).sort((a, b) => {
+      const x = key(a), y = key(b);
+      for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return x[i] < y[i] ? -1 : 1;
+      return 0;
+    });
+  }
+  function mutateTasks(fn) { fn(state.tasks); saveTasks(); renderAll(); }
+  const findTask = (id) => state.tasks.find((x) => x.id === id);
+  function markDone(id) {
+    mutateTasks((list) => {
+      const t = list.find((x) => x.id === id); if (!t) return;
+      t.feita = TODAY;
+      if (t.rep) list.push({ ...t, id: newId(), feita: null, adiada: 0, due: nextDate(t.due || TODAY, t.rep) });
+    });
+  }
+  const undoDone = (id) => mutateTasks(() => { const t = findTask(id); if (t) t.feita = null; });
+  const postpone = (id, to) => mutateTasks(() => { const t = findTask(id); if (t) { t.adiada = (t.adiada || 0) + 1; t.due = to || addDays(TODAY, 1); } });
+  const toSomeday = (id) => mutateTasks(() => { const t = findTask(id); if (t) { t.inbox = false; t.algumDia = true; t.due = ""; } });
+  const promote = (id) => mutateTasks(() => { const t = findTask(id); if (t) { t.inbox = false; t.algumDia = false; } });
+  function removeTask(id) {
+    const t = findTask(id);
+    if (t && confirm(`Apagar "${t.t}"?`)) mutateTasks((list) => list.splice(list.indexOf(t), 1));
+  }
+
+  function chips(t) {
+    const out = [];
+    if (t.due && !t.feita) {
+      const late = daysBetween(t.due, TODAY);
+      if (late > 0) out.push(h("span", { class: "chip late", text: `atrasada ${late} dia${late > 1 ? "s" : ""}` }));
+      else if (late === 0) out.push(h("span", { class: "chip today", text: "hoje" }));
+      else out.push(h("span", { class: "chip", text: `prazo ${shortDate(t.due)}` }));
+    }
+    if (t.p === 1) out.push(h("span", { class: "chip", text: "alta" }));
+    if (t.rep) out.push(h("span", { class: "chip", text: { diaria: "diária", semanal: "semanal", mensal: "mensal", anual: "anual" }[t.rep] }));
+    if (t.algumDia) out.push(h("span", { class: "chip", text: "algum dia" }));
+    if (t.adiada >= 3 && !t.feita) out.push(h("span", { class: "chip chronic", text: `adiada ${t.adiada}×` }));
+    else if (t.adiada && !t.feita) out.push(h("span", { class: "chip", text: `adiada ${t.adiada}×` }));
+    if (t.feita) out.push(h("span", { class: "chip", text: `feita ${shortDate(t.feita)}` }));
+    return out;
+  }
+
+  function renderHoje() {
+    $("tasks-example").hidden = !state.tasksExample;
+    const top = ranked().slice(0, 3);
+    $("focus-list").replaceChildren(...(top.length ? top.map((t, i) => h("li", { class: "focus-item" },
+      h("span", { class: "rank", "aria-hidden": "true", text: String(i + 1) }),
+      h("div", {}, h("div", { class: "title", text: t.t }), h("div", { class: "meta" }, chips(t))),
+      h("div", { class: "actions" },
+        h("button", { class: "btn small accent", text: "Foco", title: "Arrancar um bloco de foco nesta tarefa", onclick: () => openFocus(t.id) }),
+        h("button", { class: "btn small", text: "Feita", onclick: () => markDone(t.id) }),
+        h("button", { class: "btn small ghost", text: "Amanhã", onclick: () => postpone(t.id) }),
+        h("button", { class: `btn small ${t.adiada >= 3 ? "" : "ghost"}`, text: "Travado", title: "Perceber o bloqueio e arrancar", onclick: () => openUnstick(t.id) }),
+      ),
+    )) : [h("li", { class: "banner plain", text: "Sem tarefas por fazer. Acrescenta uma em \"Nova tarefa\"." })]));
+
+    const late = openTasks().filter((t) => t.due && t.due < TODAY).length;
+    const doneToday = state.tasks.filter((t) => t.feita === TODAY).length;
+    $("focus-summary").textContent = [doneToday ? `${doneToday} feita${doneToday > 1 ? "s" : ""} hoje` : "", late ? `${late} atrasada${late > 1 ? "s" : ""}` : ""].filter(Boolean).join(" · ");
+
+    const inbox = state.tasks.filter((t) => t.inbox && !t.feita);
+    $("inbox-count").textContent = inbox.length;
+    $("inbox-list").replaceChildren(...(inbox.length ? inbox.map((t) => h("li", { class: "task" },
+      h("span", {}), h("span", { class: "title", text: t.t }),
+      h("span", { class: "actions" },
+        h("button", { class: "btn small", text: "Tarefa", onclick: () => promote(t.id) }),
+        h("button", { class: "btn small ghost", text: "Algum dia", onclick: () => toSomeday(t.id) }),
+        h("button", { class: "btn small ghost", text: "Apagar", onclick: () => removeTask(t.id) }),
+      ),
+    )) : [h("li", { class: "muted", text: "Vazia." })]));
+
+    const all = [...ranked(), ...openTasks().filter((t) => t.algumDia),
+      ...state.tasks.filter((t) => t.feita).sort((a, b) => b.feita.localeCompare(a.feita)).slice(0, 15)];
+    $("all-count").textContent = openTasks().length;
+    $("all-list").replaceChildren(...all.map((t) => h("li", { class: `task${t.feita ? " done" : ""}` },
+      h("input", { type: "checkbox", class: "check", "aria-label": `Marcar "${t.t}" como feita`, checked: !!t.feita, onchange: (e) => (e.target.checked ? markDone(t.id) : undoDone(t.id)) }),
+      h("div", {}, h("div", { class: "title", text: t.t }), h("div", { class: "meta" }, chips(t))),
+      h("span", { class: "actions" },
+        t.feita ? null : t.algumDia ? h("button", { class: "btn small ghost", text: "Ativar", onclick: () => promote(t.id) }) : h("button", { class: "btn small ghost", text: "Amanhã", onclick: () => postpone(t.id) }),
+        h("button", { class: "btn small ghost", text: "Apagar", onclick: () => removeTask(t.id) }),
+      ),
+    )));
+  }
+
+  $("tasks-start").addEventListener("click", () => { state.tasks = []; state.tasksExample = false; saveTasks(); renderAll(); });
+  $("capture-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const v = $("capture-input").value.trim(); if (!v) return;
+    mutateTasks((list) => list.push({ id: newId(), t: v, p: 2, due: "", rep: "", adiada: 0, feita: null, inbox: true }));
+    $("capture-input").value = "";
+    flash(state.tasksExample ? "Apontado no exemplo. Carrega em \"Começar a minha lista\" para guardar." : "Apontado na caixa de entrada. Volta ao que estavas a fazer.", 2500);
+  });
+  $("task-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const t = $("task-title").value.trim(); if (!t) return;
+    const rep = $("task-rep").value;
+    mutateTasks((list) => list.push({ id: newId(), t, p: Number($("task-prio").value), due: $("task-due").value || (rep ? TODAY : ""), rep, adiada: 0, feita: null, inbox: false }));
+    e.target.reset();
+  });
+
+  // ---- travado
+  let unstickId = null;
+  function openUnstick(id) {
+    unstickId = id;
+    const t = findTask(id);
+    $("unstick").hidden = false;
+    $("unstick-title").textContent = `Travado: ${t.t}`;
+    $("unstick-body").replaceChildren();
+    $("unstick").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+  $("unstick-close").addEventListener("click", () => { $("unstick").hidden = true; unstickId = null; });
+  document.querySelectorAll("#unstick-options button").forEach((b) => b.addEventListener("click", () => unstickChoose(b.dataset.why)));
+  function unstickChoose(why) {
+    const t = findTask(unstickId); if (!t) return;
+    const body = $("unstick-body");
+    if (why === "comecar" || why === "grande") {
+      const go = h("button", { class: "btn primary", text: "Sugerir passos pequenos" });
+      const stop = h("button", { class: "btn", text: "Parar", hidden: true });
+      const note = h("span", { class: "note" });
+      const list = h("ol", { class: "steps" });
+      const apply = h("button", { class: "btn accent", text: "Trocar a tarefa por estes passos", hidden: true });
+      let steps = [];
+      go.addEventListener("click", () => runAI({ go, stop, note, work: async (signal) => {
+        const data = await sampleFn.json([
+          SAFE,
+          "Ajuda alguém que adia tarefas a arrancar. Divide a tarefa em 3 a 5 passos concretos e físicos.",
+          "O PRIMEIRO passo tem de demorar 2 a 5 minutos e ser uma ação visível (ex.: \"abrir o portal e procurar a senha\").",
+          why === "grande" ? "A pessoa acha a tarefa grande ou chata: passos curtos, sem sermões." : "A pessoa não sabe por onde começar.",
+          'Responde só com JSON: {"passos": [string, ...]}',
+          "",
+          `Tarefa: ${t.t}`,
+        ].join("\n"), opts({ signal, modelTier: "quick" }));
+        steps = (Array.isArray(data?.passos) ? data.passos : []).map(String).filter(Boolean).slice(0, 6);
+        list.replaceChildren(...steps.map((s) => h("li", { text: s })));
+        apply.hidden = !steps.length;
+      } }));
+      apply.addEventListener("click", () => {
+        mutateTasks((all) => {
+          const i = all.indexOf(t); if (i < 0) return;
+          const made = steps.map((s, k) => ({ id: newId(), t: s, p: t.p, due: k === 0 ? TODAY : t.due, rep: "", adiada: k === 0 ? (t.adiada || 0) : 0, feita: null, inbox: false }));
+          all.splice(i, 1, ...made);
+          unstickId = made[0].id;
+        });
+        body.replaceChildren(h("p", {}, "Feito. Primeiro passo para hoje: ", h("strong", { text: steps[0] })),
+          h("div", {}, h("button", { class: "btn accent", text: "Fazer já, 5 minutos", onclick: () => { openFocus(unstickId); setPreset(10); } })));
+      });
+      body.replaceChildren(h("div", { class: "row" }, go, stop, note), list, h("div", {}, apply));
+    } else if (why === "falta") {
+      const inp = h("input", { type: "text", class: "grow", placeholder: "O que falta? (ex.: o NIF do senhorio)" });
+      const who = h("input", { type: "text", placeholder: "Quem ou onde? (opcional)", style: "width: 14em" });
+      const btn = h("button", { class: "btn primary", text: "Criar tarefa para obter isso" });
+      btn.addEventListener("click", () => {
+        const what = inp.value.trim(); if (!what) return;
+        mutateTasks((all) => all.push({ id: newId(), t: `Obter: ${what}${who.value.trim() ? ` (${who.value.trim()})` : ""}`, p: 1, due: addDays(TODAY, 1), rep: "", adiada: 0, feita: null, inbox: false }));
+        body.replaceChildren(h("p", { text: "Criada, com prazo para amanhã. A tarefa original fica à espera." }));
+      });
+      body.replaceChildren(h("div", { class: "row" }, inp, who, btn));
+    } else {
+      body.replaceChildren(
+        h("p", { class: "muted", text: "Não fazer é uma decisão válida. O que preferes?" }),
+        h("div", { class: "row" },
+          h("button", { class: "btn", text: "Passar para algum dia", onclick: () => { toSomeday(t.id); $("unstick").hidden = true; } }),
+          h("button", { class: "btn", text: "Apagar", onclick: () => { removeTask(t.id); if (!findTask(t.id)) $("unstick").hidden = true; } }),
+        ),
+      );
+    }
+  }
+
+  // =========================================================== FOCO
+  const R = 52, CIRC = 2 * Math.PI * R;
+  const ring = $("ring-progress");
+  ring.setAttribute("stroke-dasharray", CIRC.toFixed(2));
+  const timer = { minutes: 25, end: 0, running: false, tick: null, taskId: "" };
+  let audio = null;
+
+  function renderFocusSelect() {
+    const sel = $("focus-task");
+    const list = ranked();
+    const cur = timer.taskId || sel.value;
+    sel.replaceChildren(h("option", { value: "", text: "Escolhe a tarefa…" }), ...list.map((t) => h("option", { value: t.id, text: t.t })));
+    if (list.some((t) => t.id === cur)) sel.value = cur;
+  }
+  function renderFoco() {
+    const n = state.blocks[TODAY] || 0;
+    $("blocks-today").textContent = n ? `${n} bloco${n > 1 ? "s" : ""} de foco hoje${n >= 4 ? " · está na hora de uma pausa longa" : ""}` : "";
+  }
+  function paintClock(left, total) {
+    const s = Math.max(0, Math.round(left / 1000));
+    $("clock").textContent = `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
+    ring.setAttribute("stroke-dashoffset", (CIRC * (1 - left / total)).toFixed(2));
+  }
+  function setPreset(min) {
+    if (timer.running) return;
+    timer.minutes = min;
+    document.querySelectorAll(".presets .btn").forEach((x) => x.setAttribute("aria-pressed", String(Number(x.dataset.min) === min)));
+    paintClock(min * 60000, min * 60000);
+  }
+  function openFocus(id) {
+    timer.taskId = id;
+    selectTab("foco");
+    $("focus-task").value = id;
+    $("focus-step").focus();
+  }
+  document.querySelectorAll(".presets .btn").forEach((b) => b.addEventListener("click", () => setPreset(Number(b.dataset.min))));
+  function beep() {
+    try {
+      if (!audio) return;
+      const now = audio.currentTime;
+      [0, 0.35, 0.7].forEach((t) => {
+        const o = audio.createOscillator(), g = audio.createGain();
+        o.frequency.value = 880; o.connect(g); g.connect(audio.destination);
+        g.gain.setValueAtTime(0.0001, now + t); g.gain.exponentialRampToValueAtTime(0.25, now + t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, now + t + 0.25);
+        o.start(now + t); o.stop(now + t + 0.3);
+      });
+    } catch { /* sem som */ }
+  }
+  function stopTimer(finished) {
+    clearInterval(timer.tick); timer.running = false;
+    $("timer-start").hidden = false; $("timer-stop").hidden = true; $("focus-dot").hidden = true;
+    const task = findTask(timer.taskId);
+    const msg = $("focus-end-msg");
+    if (finished) {
+      paintClock(0, 1);
+      $("clock-caption").textContent = "bloco terminado";
+      state.blocks[TODAY] = (state.blocks[TODAY] || 0) + 1; saveBlocks();
+      msg.hidden = false;
+      msg.replaceChildren(...[
+        h("strong", { text: "Pausa de 5 minutos. " }),
+        task ? h("span", { text: `Acabaste "${task.t}"? ` }) : null,
+        task && !task.feita ? h("button", { class: "btn small", text: "Sim, está feita", onclick: () => { markDone(task.id); msg.hidden = true; } }) : null,
+      ].filter(Boolean));
+      document.title = "⏰ Pausa · Rumo";
+      beep(); renderFoco();
+    } else {
+      paintClock(timer.minutes * 60000, timer.minutes * 60000);
+      $("clock-caption").textContent = "pronto a começar";
+      document.title = "Rumo";
+    }
+  }
+  $("timer-start").addEventListener("click", () => {
+    timer.taskId = $("focus-task").value;
+    try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); } catch { audio = null; }
+    const total = timer.minutes * 60000;
+    timer.end = Date.now() + total; timer.running = true;
+    $("timer-start").hidden = true; $("timer-stop").hidden = false; $("focus-dot").hidden = false; $("focus-end-msg").hidden = true;
+    const task = findTask(timer.taskId);
+    const step = $("focus-step").value.trim();
+    $("clock-caption").textContent = step ? `1.º passo: ${step}` : task ? task.t : "a focar";
+    document.title = "Em foco · Rumo";
+    const tick = () => { const left = timer.end - Date.now(); if (left <= 0) stopTimer(true); else paintClock(left, total); };
+    tick(); timer.tick = setInterval(tick, 1000);
+  });
+  $("timer-stop").addEventListener("click", () => stopTimer(false));
+  $("focus-task").addEventListener("change", (e) => { timer.taskId = e.target.value; });
+
+  // =========================================================== SEMANA
+  const picked = new Set();
+  function renderSemana() {
+    const from = addDays(TODAY, -6);
+    const done = state.tasks.filter((t) => t.feita && t.feita >= from && t.feita <= TODAY).sort((a, b) => b.feita.localeCompare(a.feita));
+    const late = openTasks().filter((t) => t.due && t.due < TODAY && !t.algumDia);
+    const postponed = openTasks().filter((t) => (t.adiada || 0) >= 2 && !late.includes(t) && !t.algumDia).sort((a, b) => b.adiada - a.adiada).slice(0, 5);
+    const inbox = state.tasks.filter((t) => t.inbox && !t.feita);
+    $("w-done").textContent = done.length; $("w-late").textContent = late.length; $("w-inbox").textContent = inbox.length;
+
+    $("w-done-list").replaceChildren(...(done.length ? done.map((t) => h("li", { class: "task done" }, h("span", {}), h("span", { class: "title", text: t.t }), h("span", { class: "chip", text: shortDate(t.feita) })))
+      : [h("li", { class: "muted", text: "Nada marcado como feito nos últimos 7 dias." })]));
+
+    const clean = [...late, ...postponed];
+    $("w-clean-list").replaceChildren(...(clean.length ? clean.map((t) => {
+      const date = h("input", { type: "date", "aria-label": `Nova data para ${t.t}`, value: addDays(TODAY, 1) });
+      return h("li", { class: "task" }, h("span", {}),
+        h("div", {}, h("div", { class: "title", text: t.t }), h("div", { class: "meta" }, chips(t))),
+        h("span", { class: "actions" }, date,
+          h("button", { class: "btn small", text: "Mudar data", onclick: () => postpone(t.id, date.value || addDays(TODAY, 1)) }),
+          h("button", { class: "btn small ghost", text: "Algum dia", onclick: () => toSomeday(t.id) }),
+          h("button", { class: "btn small ghost", text: "Apagar", onclick: () => removeTask(t.id) })));
+    }) : [h("li", { class: "muted", text: "Nada para limpar." })]));
+    if (inbox.length) $("w-clean-list").append(h("li", { class: "task" }, h("span", {}), h("span", { class: "muted", text: `${inbox.length} por triar na caixa de entrada.` }), h("button", { class: "btn small", text: "Ir triar", onclick: () => { selectTab("hoje"); $("inbox-panel").open = true; } })));
+
+    const candidates = openTasks().filter((t) => !t.algumDia);
+    $("w-pick-list").replaceChildren(...(candidates.length ? candidates.map((t) => h("li", { class: "task" },
+      h("input", { type: "checkbox", class: "check", "aria-label": `Prioridade da semana: ${t.t}`, checked: picked.has(t.id),
+        onchange: (e) => {
+          if (e.target.checked && picked.size >= 3) { e.target.checked = false; flash("No máximo 3 prioridades.", 2000); return; }
+          e.target.checked ? picked.add(t.id) : picked.delete(t.id);
+        } }),
+      h("div", {}, h("div", { class: "title", text: t.t }), h("div", { class: "meta" }, chips(t))), h("span", {}),
+    )) : [h("li", { class: "muted", text: "Sem tarefas abertas." })]));
+
+    $("w-history").replaceChildren(...state.reviews.slice(0, 6).map((r) => h("li", { class: "task" }, h("span", { class: "chip", text: r.semana }),
+      h("div", {}, h("div", { text: r.melhoria || "(sem melhoria)" }), h("div", { class: "muted small", text: `${r.feitas} feitas · ${r.atrasadas} atrasadas` })), h("span", {}))));
+  }
+  $("w-save").addEventListener("click", () => {
+    if (picked.size) mutateTasks((list) => list.forEach((t) => { if (picked.has(t.id)) t.p = 1; }));
+    const from = addDays(TODAY, -6);
+    const entry = {
+      semana: weekKey(TODAY), data: TODAY, melhoria: $("w-improve").value.trim(),
+      feitas: state.tasks.filter((t) => t.feita && t.feita >= from).length,
+      atrasadas: openTasks().filter((t) => t.due && t.due < TODAY).length,
+    };
+    state.reviews = [entry, ...state.reviews.filter((r) => r.semana !== entry.semana)];
+    saveReviews(); picked.clear(); $("w-improve").value = "";
+    flash("Revisão guardada. Boa semana.", 2500); renderSemana();
+  });
+
+  // =========================================================== FINANÇAS: dados
+  let movKind = "out";
+  const monthsKnown = () => [...new Set([...state.index, MONTH, state.month])].sort().reverse();
+  const movOf = (m) => state.months[m]?.mov || [];
+  function categorize(desc) { const d = fold(desc); return state.rules.find((r) => r.p && d.includes(fold(r.p)))?.cat || ""; }
+
+  function summary(m) {
+    const mov = movOf(m).filter((x) => x.cat !== TRANSFER);
+    const income = mov.filter((x) => x.v > 0).reduce((s, x) => s + x.v, 0);
+    const spent = mov.filter((x) => x.v < 0).reduce((s, x) => s - x.v, 0);
+    const byCat = {};
+    for (const x of mov) if (x.v < 0) byCat[x.cat || "(sem categoria)"] = (byCat[x.cat || "(sem categoria)"] || 0) - x.v;
+    const prev = [1, 2, 3].map((k) => addMonths(m, -k)).filter((pm) => state.months[pm]);
+    const avg = (cat) => prev.length ? prev.reduce((s, pm) => s + movOf(pm).filter((x) => (x.cat || "(sem categoria)") === cat && x.v < 0).reduce((a, x) => a - x.v, 0), 0) / prev.length : null;
+    const cats = [...new Set([...Object.keys(state.budget), ...Object.keys(byCat)])]
+      .map((c) => ({ cat: c, spent: byCat[c] || 0, limit: Number(state.budget[c]) > 0 ? Number(state.budget[c]) : null, avg: avg(c) }))
+      .sort((a, b) => (b.limit !== null) - (a.limit !== null) || b.spent - a.spent);
+    const budgeted = cats.filter((c) => c.limit !== null);
+    const limitSum = budgeted.reduce((s, c) => s + c.limit, 0);
+    const left = limitSum - budgeted.reduce((s, c) => s + c.spent, 0);
+    const [y, mo] = m.split("-").map(Number);
+    const daysLeft = m === MONTH ? new Date(y, mo, 0).getDate() - Number(TODAY.slice(8)) + 1 : 0;
+    return { income, spent, cats, limitSum, left, daysLeft };
+  }
+  function recurring(m) {
+    const months = [0, 1, 2].map((k) => addMonths(m, -k)).filter((x) => state.months[x] && movOf(x).length);
+    const norm = (d) => fold(d).replace(/\d+/g, " ").replace(/[^\p{L} ]/gu, " ").replace(/\s+/g, " ").trim();
+    const groups = new Map();
+    for (const mm of months) for (const x of movOf(mm)) {
+      if (x.v >= 0 || x.cat === TRANSFER) continue;
+      const k = norm(x.desc); if (!k) continue;
+      const g = groups.get(k) || { label: x.desc, cat: x.cat, months: new Set(), total: 0 };
+      g.months.add(mm); g.total -= x.v; groups.set(k, g);
+    }
+    return { months, items: [...groups.values()].filter((g) => g.months.size >= 2).map((g) => ({ ...g, monthly: g.total / g.months.size })).sort((a, b) => b.monthly - a.monthly) };
+  }
+
+  function addMovements(list) {
+    const touched = new Set();
+    for (const x of list) {
+      const m = x.d.slice(0, 7);
+      (state.months[m] ||= { mov: [] }).mov.push(x);
+      touched.add(m);
+      if (!state.index.includes(m)) state.index.push(m);
+    }
+    state.index.sort();
+    touched.forEach(saveMonth);
+    saveIndex();
+    return touched;
+  }
+
+  // =========================================================== FINANÇAS: mês
+  function fillCats() {
+    const cats = movKind === "out" ? [...CATS_OUT, TRANSFER] : [...CATS_IN, TRANSFER];
+    $("mov-cat").replaceChildren(h("option", { value: "", text: "Categoria (auto)" }), ...cats.map((c) => h("option", { value: c, text: c })));
+  }
+  segGroup("kind-seg", (v) => { movKind = v; fillCats(); });
+
+  function renderMes() {
+    $("fin-example").hidden = !state.finExample;
+    const m = state.month;
+    $("month-select").replaceChildren(...monthsKnown().map((mm) => h("option", { value: mm, text: monthLabel(mm) })));
+    $("month-select").value = m;
+    const s = summary(m);
+    $("fin-days").textContent = m === MONTH ? `faltam ${s.daysLeft} dia${s.daysLeft > 1 ? "s" : ""}` : "mês fechado";
+    $("k-in").textContent = money(s.income);
+    $("k-out").textContent = money(s.spent);
+    $("k-rate").textContent = s.income > 0 ? `poupança: ${Math.round(((s.income - s.spent) / s.income) * 100)}%` : "";
+    if (s.limitSum > 0) {
+      $("k-left").textContent = s.left >= 0 ? money(s.left) : `${money(-s.left)} acima`;
+      $("k-perday").textContent = m !== MONTH ? "no fim do mês" : s.left > 0 ? `≈ ${money(s.left / s.daysLeft)} por dia` : "orçamento ultrapassado";
+    } else { $("k-left").textContent = "—"; $("k-perday").textContent = "define limites abaixo"; }
+
+    $("budget").replaceChildren(...s.cats.filter((c) => c.cat !== "(sem categoria)" || c.spent).map((c) => {
+      const pct = c.limit ? c.spent / c.limit : 0;
+      const cls = !c.limit ? "" : pct > 1 ? "bad" : pct >= 0.9 ? "warn" : "";
+      const above = c.avg !== null && c.avg > 0 && c.spent > c.avg * 1.25 && c.spent - c.avg > 20;
+      const inputId = `lim-${fold(c.cat).replace(/[^a-z]/g, "")}`;
+      return h("div", { class: "bline" },
+        h("div", {}, h("strong", { text: c.cat }), " ", h("span", { class: "muted num", text: money(c.spent) }),
+          c.avg !== null ? h("span", { class: `small ${above ? "warn-text" : "muted"}`, text: `  · média ${money(c.avg)}${above ? " ↑" : ""}` }) : null),
+        c.cat === "(sem categoria)" ? h("button", { class: "btn small", text: "Categorizar", onclick: () => { $("mov-panel").open = true; $("mov-panel").scrollIntoView({ behavior: "smooth" }); } })
+          : h("div", { class: "row" },
+            h("label", { class: "sr", for: inputId, text: `Limite para ${c.cat}` }),
+            h("input", { type: "number", id: inputId, class: "limit-input num", min: "0", step: "10", placeholder: "sem limite", value: c.limit ?? "",
+              onchange: (e) => { const v = Number(e.target.value); if (v > 0) state.budget[c.cat] = v; else delete state.budget[c.cat]; saveBudget(); renderMes(); } })),
+        c.limit ? h("div", { class: "bar", role: "img", "aria-label": `${Math.round(pct * 100)}% do limite` }, h("span", { class: cls, style: `width:${Math.min(100, pct * 100).toFixed(1)}%` })) : null,
+      );
+    }));
+    const extra = CATS_OUT.filter((c) => !s.cats.some((x) => x.cat === c));
+    if (extra.length) {
+      const sel = h("select", { "aria-label": "Acrescentar limite a outra categoria" }, h("option", { value: "", text: "+ limite para outra categoria…" }), ...extra.map((c) => h("option", { value: c, text: c })));
+      sel.addEventListener("change", () => { if (sel.value) { state.budget[sel.value] = 50; saveBudget(); renderMes(); } });
+      $("budget").append(sel);
+    }
+
+    const rec = recurring(m);
+    const recTotal = rec.items.reduce((a, i) => a + i.monthly, 0);
+    $("rec-total").textContent = rec.items.length ? `≈ ${money(recTotal)} por mês` : "";
+    $("rec-body").replaceChildren(...(rec.months.length < 2 ? [h("tr", {}, h("td", { colspan: "4", class: "muted", text: "São precisos pelo menos 2 meses com movimentos." }))]
+      : rec.items.length ? rec.items.map((i) => h("tr", {}, h("td", { text: i.label }), h("td", { class: "muted", text: i.cat || "—" }), h("td", { class: "num", text: `${i.months.size}/${rec.months.length}` }), h("td", { class: "v num", text: money(i.monthly) })))
+      : [h("tr", {}, h("td", { colspan: "4", class: "muted", text: "Nenhuma despesa repetida encontrada." }))]));
+
+    const rows = [...movOf(m)].sort((a, b) => b.d.localeCompare(a.d));
+    const uncat = rows.filter((x) => !x.cat).length;
+    $("mov-count").textContent = rows.length;
+    $("uncat-count").hidden = !uncat; $("uncat-count").textContent = `${uncat} sem categoria`;
+    $("mov-body").replaceChildren(...(rows.length ? rows.map((x) => {
+      const sel = h("select", { "aria-label": `Categoria de ${x.desc}` }, h("option", { value: "", text: "— escolher —" }), ...ALL_CATS.map((c) => h("option", { value: c, text: c })));
+      sel.value = x.cat || "";
+      sel.addEventListener("change", () => {
+        x.cat = sel.value; saveMonth(m);
+        if (sel.value && !x.regraOferecida) {
+          const word = x.desc.replace(/\(exemplo\)/, "").trim().split(/\s+/).find((w) => w.length > 3 && !/^\d/.test(w)) || "";
+          if (word && confirm(`Criar regra: descrições com "${word.toLowerCase()}" passam a "${sel.value}"?`)) { state.rules.unshift({ p: word.toLowerCase(), cat: sel.value }); saveRules(); }
+          x.regraOferecida = true;
+        }
+        renderMes();
+      });
+      return h("tr", {},
+        h("td", { class: "num", text: shortDate(x.d) }),
+        h("td", {}, x.desc, x.acc ? h("div", { class: "muted small", text: x.acc }) : null),
+        h("td", {}, sel),
+        h("td", { class: `v num${x.v > 0 ? " pos" : ""}`, text: money(x.v) }),
+        h("td", {}, h("button", { class: "btn small ghost", text: "Apagar", "aria-label": `Apagar ${x.desc}`, onclick: () => {
+          if (!confirm(`Apagar "${x.desc}" (${money(x.v)})?`)) return;
+          state.months[m].mov = movOf(m).filter((y) => y !== x); saveMonth(m); renderMes();
+        } })),
+      );
+    }) : [h("tr", {}, h("td", { colspan: "5", class: "muted", text: "Sem movimentos neste mês." }))]));
+
+    $("rules-count").textContent = state.rules.length;
+    $("rule-cat").replaceChildren(...ALL_CATS.map((c) => h("option", { value: c, text: c })));
+    $("rules-list").replaceChildren(...state.rules.map((r, i) => h("li", { class: "task" },
+      h("span", { class: "num muted", text: String(i + 1) }),
+      h("span", {}, h("span", { class: "num", text: `"${r.p}"` }), " → ", h("strong", { text: r.cat })),
+      h("span", { class: "actions" },
+        i > 0 ? h("button", { class: "btn small ghost", text: "↑", "aria-label": "Subir regra", onclick: () => { [state.rules[i - 1], state.rules[i]] = [state.rules[i], state.rules[i - 1]]; saveRules(); renderMes(); } }) : null,
+        h("button", { class: "btn small ghost", text: "Apagar", onclick: () => { state.rules.splice(i, 1); saveRules(); renderMes(); } })),
+    )));
+  }
+
+  $("month-select").addEventListener("change", (e) => {
+    state.month = e.target.value;
+    if (state.mode === "cloud" && !state.finExample) { watchMonth(state.month); ensureRecentMonths(); }
+    renderMes();
+  });
+  $("fin-start").addEventListener("click", () => {
+    applyFinance({ months: {}, index: [], budget: {}, rules: structuredClone(DEFAULT_RULES), accounts: [] });
+    state.month = MONTH;
+    saveIndex(); saveBudget(); saveRules(); saveAccounts();
+    if (state.mode === "cloud") {
+      watch("fin-index", (d) => { if (d) state.index = d.months || []; });
+      watch("orcamento", (d) => { if (d) state.budget = d.limits || {}; });
+      watch("regras", (d) => { if (d) state.rules = d.rules || []; });
+      watch("contas", (d) => { if (d) state.accounts = d.items || []; });
+      watchMonth(MONTH);
+    }
+    renderAll();
+  });
+  $("mov-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const d = $("mov-date").value, desc = $("mov-desc").value.trim(), val = Number($("mov-value").value);
+    if (!d || !desc || !(val > 0)) return;
+    const cat = $("mov-cat").value || categorize(desc);
+    const sign = movKind === "out" || cat === TRANSFER ? -1 : 1;
+    addMovements([{ id: newId(), d, desc, v: sign * val, cat, acc: $("mov-acc").value.trim() }]);
+    if (d.slice(0, 7) !== state.month) flash(`Registado em ${monthLabel(d.slice(0, 7))}.`, 2500);
+    $("mov-desc").value = ""; $("mov-value").value = ""; $("mov-desc").focus();
+    renderMes();
+  });
+  $("rule-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const p = $("rule-pat").value.trim().toLowerCase(); if (!p) return;
+    if (p.length < 3) { flash("Usa pelo menos 3 letras, para a regra não apanhar tudo.", 2500); return; }
+    state.rules.unshift({ p, cat: $("rule-cat").value }); saveRules();
+    $("rule-pat").value = ""; renderMes();
+  });
+  $("rules-apply").addEventListener("click", () => {
+    let n = 0;
+    for (const m of Object.keys(state.months)) {
+      let changed = false;
+      for (const x of movOf(m)) if (!x.cat) { const c = categorize(x.desc); if (c) { x.cat = c; n++; changed = true; } }
+      if (changed) saveMonth(m);
+    }
+    flash(`${n} movimento${n === 1 ? "" : "s"} categorizado${n === 1 ? "" : "s"}.`, 2500); renderMes();
+  });
+
+  // ---- importação (mesmo método do script financas.mjs)
+  function parseCsv(text, sep) {
+    const rows = []; let row = [], cell = "", q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) { if (c === '"' && text[i + 1] === '"') cell += text[i++]; else if (c === '"') q = false; else cell += c; }
+      else if (c === '"') q = true;
+      else if (c === sep) { row.push(cell); cell = ""; }
+      else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(cell); rows.push(row); row = []; cell = ""; }
+      else cell += c;
+    }
+    if (cell || row.length) rows.push([...row, cell]);
+    return rows.filter((r) => r.some((x) => x.trim()));
+  }
+  const detectSep = (line) => [";", ",", "\t"].map((s) => [s, line.split(s).length]).sort((a, b) => b[1] - a[1])[0][0];
+  function toNumber(s) {
+    let t = String(s ?? "").replace(/[€\s\u00a0]/g, "");
+    if (!t) return NaN;
+    const neg = /^\(.*\)$/.test(t); t = t.replace(/[()]/g, "");
+    const lc = t.lastIndexOf(","), ld = t.lastIndexOf(".");
+    if (lc > ld) t = t.replace(/\./g, "").replace(",", ".");
+    else if (ld > lc && lc !== -1) t = t.replace(/,/g, "");
+    const n = Number(t); return neg ? -n : n;
+  }
+  function toDate(s) {
+    const t = String(s ?? "").trim();
+    let m = t.match(/^(\d{4})-(\d{2})-(\d{2})/); if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    m = t.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/); if (m) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+    return null;
+  }
+  const ALIASES = {
+    data: ["data", "data mov", "data mov.", "data movimento", "data lancamento", "data operacao", "data valor", "date"],
+    desc: ["descricao", "descritivo", "movimento", "designacao", "description", "detalhes"],
+    valor: ["valor", "montante", "montante (eur)", "importancia", "amount", "valor (eur)"],
+    deb: ["debito", "debito (eur)", "debit"], cred: ["credito", "credito (eur)", "credit"],
+  };
+  function importCsv(text, acc, custom) {
+    text = text.replace(/^\uFEFF/, "");
+    const names = (k) => (custom[k] ? [fold(custom[k])] : ALIASES[k]);
+    const lines = text.split(/\r?\n/);
+    const at = lines.findIndex((l) => {
+      const cells = l.split(detectSep(l)).map((c) => fold(c.replace(/"/g, "")));
+      return cells.some((c) => names("data").includes(c)) && cells.some((c) => [...names("valor"), ...ALIASES.deb].includes(c));
+    });
+    if (at === -1) throw new Error("Não encontrei a linha com os nomes das colunas (data e valor/débito). Indica os nomes em \"O banco usa outros nomes de colunas?\".");
+    const rows = parseCsv(lines.slice(at).join("\n"), detectSep(lines[at]));
+    const head = rows.shift().map(fold);
+    const col = (k) => head.findIndex((x) => names(k).includes(x));
+    const [iD, iS, iV, iDb, iCr] = [col("data"), col("desc"), col("valor"), col("deb"), col("cred")];
+    if (iS === -1) throw new Error(`Não encontrei a coluna da descrição. Colunas: ${head.join(", ")}`);
+    const key = (x) => [x.d, fold(x.desc), x.v.toFixed(2), fold(x.acc)].join("|");
+    const seen = new Map();
+    for (const m of Object.keys(state.months)) for (const x of movOf(m)) seen.set(key(x), (seen.get(key(x)) || 0) + 1);
+    const add = []; let dup = 0, skipped = 0;
+    for (const r of rows) {
+      const d = toDate(r[iD]);
+      const has = (r[iCr] || "").trim() || (r[iDb] || "").trim();
+      const v = iV !== -1 ? toNumber(r[iV]) : has ? (toNumber(r[iCr]) || 0) - Math.abs(toNumber(r[iDb]) || 0) : NaN;
+      if (!d || Number.isNaN(v)) { skipped++; continue; }
+      const desc = (r[iS] || "").replace(/\s+/g, " ").trim();
+      const x = { id: newId(), d, desc, v, cat: categorize(desc), acc };
+      const k = key(x);
+      if (seen.get(k)) { seen.set(k, seen.get(k) - 1); dup++; } else add.push(x);
+    }
+    return { add, dup, skipped };
+  }
+  $("imp-go").addEventListener("click", async () => {
+    const f = $("imp-file").files?.[0];
+    const out = $("imp-result");
+    out.hidden = false;
+    if (!f) { out.textContent = "Escolhe primeiro o ficheiro CSV."; return; }
+    if (state.finExample) { out.textContent = "Carrega primeiro em \"Começar com os meus dados\" (no topo), para não misturar com o exemplo."; return; }
+    const acc = $("imp-acc").value.trim() || "principal";
+    try {
+      const months = [...new Set(state.index)];
+      if (state.mode === "cloud") {
+        const missing = months.filter((m) => !state.months[m]);
+        const docs = await Promise.all(missing.map((m) => loadDoc(`fin-${m}`)));
+        missing.forEach((m, i) => { state.months[m] = { mov: docs[i]?.mov || [] }; recentLoaded.add(m); });
+      }
+      let text = await f.text();
+      if (text.includes("\uFFFD")) { try { text = new TextDecoder("windows-1252").decode(await f.arrayBuffer()); } catch { /* fica UTF-8 */ } }
+      const r = importCsv(text, acc, { data: $("imp-col-date").value, desc: $("imp-col-desc").value, valor: $("imp-col-val").value });
+      const touched = addMovements(r.add);
+      const uncat = r.add.filter((x) => !x.cat).length;
+      out.textContent = `Importados ${r.add.length} movimentos (${[...touched].sort().map(monthLabel).join(", ") || "nenhum mês"}). ${r.dup} já existiam. ${r.skipped} linhas ignoradas.${uncat ? ` ${uncat} ficaram sem categoria: escolhe-a na tabela e a página oferece-se para criar a regra.` : ""}`;
+      if (touched.size) { state.month = [...touched].sort().at(-1); watchMonth(state.month); }
+      renderMes();
+    } catch (e) { out.textContent = e.message || "Não foi possível ler o ficheiro."; }
+  });
+
+  // =========================================================== PATRIMÓNIO
+  function renderContas() {
+    const types = {};
+    let total = 0;
+    for (const a of state.accounts) { total += a.saldo; types[a.tipo] = (types[a.tipo] || 0) + a.saldo; }
+    $("acc-kpis").replaceChildren(
+      h("div", { class: "kpi lead" }, h("span", { class: "label", text: "Total" }), h("span", { class: "num", text: money(total) })),
+      ...Object.entries(types).slice(0, 5).map(([t, v]) => h("div", { class: "kpi" }, h("span", { class: "label", text: t }), h("span", { class: `num${v < 0 ? " neg-flag" : ""}`, text: money(v) }))),
+    );
+    $("acc-body").replaceChildren(...(state.accounts.length ? state.accounts.map((a) => {
+      const age = daysBetween(a.data, TODAY);
+      const bal = h("input", { type: "number", step: "0.01", class: "limit-input num", value: a.saldo, "aria-label": `Saldo de ${a.nome}`,
+        onchange: (e) => { const v = Number(e.target.value); if (Number.isFinite(v)) { a.saldo = v; a.data = TODAY; saveAccounts(); renderContas(); } } });
+      return h("tr", {},
+        h("td", { text: a.nome }), h("td", { class: "muted", text: a.tipo }),
+        h("td", { class: "v" }, bal),
+        h("td", { class: age > 35 ? "warn-text small" : "muted small", text: age > 35 ? `há ${age} dias: atualizar` : shortDate(a.data) }),
+        h("td", {}, h("button", { class: "btn small ghost", text: "Apagar", onclick: () => { if (confirm(`Apagar a conta "${a.nome}"?`)) { state.accounts = state.accounts.filter((x) => x !== a); saveAccounts(); renderContas(); } } })));
+    }) : [h("tr", {}, h("td", { colspan: "5", class: "muted", text: "Sem contas. Acrescenta a primeira abaixo." }))]));
+    if (document.activeElement !== $("goals")) $("goals").value = state.goals;
+  }
+  $("acc-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (state.finExample) { flash("Carrega primeiro em \"Começar com os meus dados\", no separador Mês.", 3000); return; }
+    const nome = $("acc-name").value.trim(), saldo = Number($("acc-bal").value);
+    if (!nome || !Number.isFinite(saldo)) return;
+    const tipo = $("acc-type").value;
+    state.accounts.push({ id: newId(), nome, tipo, saldo: tipo === "dívida" ? -Math.abs(saldo) : saldo, data: TODAY });
+    saveAccounts(); e.target.reset(); renderContas();
+  });
+  $("goals-save").addEventListener("click", () => { state.goals = $("goals").value.trim(); saveGoals(); $("goals-note").textContent = "Guardado."; setTimeout(() => { $("goals-note").textContent = ""; }, 2000); });
+
+  // =========================================================== INVESTIR
+  $("inv-go").addEventListener("click", () => {
+    const q = $("inv-q").value.trim(); if (!q) return;
+    let ctx = "";
+    if ($("inv-ctx").checked) {
+      const months = monthsKnown().filter((m) => m < MONTH && state.months[m]).slice(0, 3);
+      const avg = months.length ? months.reduce((s, m) => { const x = summary(m); return s + (x.income - x.spent); }, 0) / months.length : null;
+      const total = state.accounts.reduce((s, a) => s + a.saldo, 0);
+      ctx = [
+        "CONTEXTO DA PESSOA (dados dela, podes usar):",
+        state.goals ? `Objetivos e perfil: ${state.goals.slice(0, 2000)}` : "Objetivos: não preenchidos.",
+        avg !== null ? `Saldo mensal médio (receitas - despesas, últimos ${months.length} meses): ${avg.toFixed(0)} €` : "Saldo mensal médio: sem dados.",
+        state.accounts.length ? `Património registado: ${total.toFixed(0)} € (${state.accounts.map((a) => `${a.tipo} ${a.saldo.toFixed(0)} €`).join("; ")})` : "Contas: não registadas.",
+        state.finExample ? "ATENÇÃO: estes valores são de EXEMPLO, não da pessoa. Diz isso na resposta." : "",
+      ].filter(Boolean).join("\n");
+    }
+    runAI({ go: $("inv-go"), stop: $("inv-stop"), note: $("inv-note"), work: async (signal) => {
+      $("inv-out").hidden = false; $("inv-result").textContent = "…";
+      await sampleFn([
+        SAFE,
+        "PAPEL: educador financeiro para uma pessoa em Portugal. NÃO és consultor: não recomendas produtos concretos nem dás ordens de compra.",
+        "- Antes de falar em investir, verifica (com o contexto) o fundo de emergência e dívidas com juros altos, e di-lo se faltar informação.",
+        "- Explica os TIPOS de opção relevantes (por exemplo: depósitos a prazo, certificados de aforro e do Tesouro, PPR, fundos e ETF, ações, obrigações) com risco, liquidez, custos e horizonte, sem valores numéricos atuais.",
+        "- Nunca indiques taxas, rendimentos, escalões, limites ou benefícios fiscais concretos: marca [Não verificado] e diz onde confirmar (Portal do Cliente Bancário do Banco de Portugal, CMVM, IGCP, Portal das Finanças, documento de informação fundamental do produto).",
+        "- Termina com: perguntas que a pessoa deve fazer ao banco ou ao intermediário, e a nota de que decisões importantes devem ser confirmadas com um profissional certificado (uma frase, sem sermão).",
+        "- Formato: texto simples com títulos curtos e listas com hífen. No máximo 350 palavras.",
+        "",
+        ctx,
+        "",
+        `PERGUNTA: ${q.slice(0, 3000)}`,
+      ].join("\n"), opts({ signal, onText: ({ text }) => { $("inv-result").textContent = text; } }));
+    } });
+  });
+
+  // =========================================================== PENSAR
+  let turns = [];
+  const PENSAR_RULES = [
+    SAFE,
+    "PAPEL: parceiro de pensamento. O objetivo é ajudar a pessoa a pensar melhor, não a concordar com ela.",
+    "- Na primeira resposta, reformula a posição dela numa frase (\"Se percebi bem, defendes que…\") e diz se a questão é factual, de valores, de previsão ou de definição.",
+    "- Em cada resposta, no máximo 3 perguntas que testem pressupostos, evidência ou contra-exemplos. Nomeia uma falácia só se ajudar, com uma linha de explicação.",
+    "- Apresenta a versão mais forte da posição contrária quando fizer sentido.",
+    "- Etiqueta afirmações: [Facto geralmente aceite], [Disputado], [Não verificado], [Opinião]. Sem internet: não cites números, estudos ou datas concretas.",
+    "- Não concordes para agradar. Não fales de outros temas. Respostas curtas (até 180 palavras), conversa por rondas.",
+  ].join("\n");
+  function renderChat() {
+    const box = $("chat");
+    box.replaceChildren(...(turns.length ? turns.map((t) => h("div", { class: `bubble ${t.role === "user" ? "me" : "ai"}`, text: t.content }))
+      : [h("p", { class: "muted", text: "Escreve uma ideia ou uma afirmação para começar." })]));
+    box.scrollTop = box.scrollHeight;
+  }
+  function renderPensar() {
+    renderChat();
+    $("notes-count").textContent = state.notes.length;
+    $("notes-list").replaceChildren(...(state.notes.length ? state.notes.map((n, i) => h("li", { class: "task" },
+      h("span", { class: "chip", text: shortDate(n.d) }),
+      h("details", {}, h("summary", { text: n.tema }), h("div", { class: "result", text: n.resumo })),
+      h("button", { class: "btn small ghost", text: "Apagar", onclick: () => { state.notes.splice(i, 1); saveNotes(); renderPensar(); } }),
+    )) : [h("li", { class: "muted", text: "Ainda nada guardado. Usa \"Fechar o tema e resumir\"." })]));
+  }
+  function chatSend(content, { summarize = false } = {}) {
+    const bubble = h("div", { class: "bubble ai", text: "…" });
+    runAI({ go: $("chat-go"), stop: $("chat-stop"), note: $("chat-note"), work: async (signal) => {
+      const history = turns.slice(-12);
+      const input = [{ role: "user", content: PENSAR_RULES }, ...history];
+      if (summarize) input.push({ role: "user", content: 'Fecha o tema. Responde só com JSON: {"tema": string curto, "resumo": string com: onde o argumento está forte; onde está fraco; o que falta saber. Até 120 palavras.}' });
+      if (summarize) {
+        const data = await sampleFn.json(input, opts({ signal, cache: false }));
+        const note = { d: TODAY, tema: String(data?.tema || "Sem título").slice(0, 80), resumo: String(data?.resumo || "").slice(0, 2000) };
+        state.notes.unshift(note); saveNotes();
+        turns.push({ role: "assistant", content: `Resumo guardado: ${note.tema}\n\n${note.resumo}` });
+        renderPensar();
+        return;
+      }
+      $("chat").append(bubble); $("chat").scrollTop = $("chat").scrollHeight;
+      try {
+        const { text } = await sampleFn(input, opts({ signal, cache: false, onText: ({ text }) => { bubble.textContent = text; $("chat").scrollTop = $("chat").scrollHeight; } }));
+        turns.push({ role: "assistant", content: text });
+      } catch (e) {
+        if (e?.text) turns.push({ role: "assistant", content: `${e.text}\n\n(interrompido)` });
+        throw e;
+      } finally { renderChat(); }
+    } });
+  }
+  $("chat-go").addEventListener("click", () => {
+    const v = $("chat-in").value.trim(); if (!v) return;
+    turns.push({ role: "user", content: v.slice(0, 4000) });
+    $("chat-in").value = ""; renderChat(); chatSend();
+  });
+  $("chat-in").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) $("chat-go").click(); });
+  $("chat-close").addEventListener("click", () => {
+    if (!turns.some((t) => t.role === "assistant")) { $("chat-note").textContent = "Ainda não há conversa para resumir."; return; }
+    chatSend("", { summarize: true });
+  });
+  $("chat-new").addEventListener("click", () => { if (!turns.length || confirm("Começar um tema novo? A conversa atual desaparece (os resumos guardados ficam).")) { turns = []; renderChat(); } });
+
+  // =========================================================== CORRETOR
+  let lang = "pt", reg = "profissional";
+  segGroup("lang-seg", (v) => { lang = v; });
+  segGroup("reg-seg", (v) => { reg = v; });
+  function renderCorretor() {
+    const items = [...state.errors].sort((a, b) => b.vezes - a.vezes);
+    $("err-count").textContent = items.length;
+    $("err-list").replaceChildren(...(items.length ? items.map((x) => h("li", { class: "task" },
+      h("span", { class: "chip", text: x.lang === "pt" ? "PT" : "EN" }),
+      h("div", {}, h("div", {}, h("del", { text: x.de }), " → ", h("ins", { text: x.para }), x.vezes > 1 ? h("span", { class: "chip chronic", text: ` ${x.vezes}×` }) : null), h("div", { class: "muted small", text: x.regra })),
+      h("button", { class: "btn small ghost", text: "Apagar", onclick: () => { state.errors = state.errors.filter((y) => y !== x); saveErrors(); renderCorretor(); } }),
+    )) : [h("li", { class: "muted", text: "Ainda nada guardado." })]));
+  }
+  function keepError(c) {
+    const l = lang === "pt" ? "pt" : "en";
+    const found = state.errors.find((x) => x.lang === l && fold(x.de) === fold(c.de) && fold(x.para) === fold(c.para));
+    if (found) found.vezes += 1; else state.errors.push({ lang: l, de: String(c.de), para: String(c.para), regra: String(c.regra || ""), vezes: 1 });
+    saveErrors(); renderCorretor();
+  }
+  $("fix-go").addEventListener("click", () => {
+    const text = $("fix-text").value.trim(); if (!text) return;
+    const isPt = lang === "pt";
+    const who = isPt ? "revisor de português europeu (norma de Portugal, Acordo Ortográfico de 1990)" : `reviewer of ${lang === "en-uk" ? "British" : "American"} English`;
+    const focus = isPt ? "ortografia, acentuação, gramática, concordância, pontuação, colocação pronominal (norma europeia) e brasileirismos"
+      : "spelling (consistent with the chosen variant), grammar, punctuation, prepositions, articles, and literal translations from Portuguese";
+    const known = state.errors.filter((x) => x.lang === (isPt ? "pt" : "en")).slice(0, 20).map((x) => `"${x.de}" → "${x.para}"`).join("; ");
+    runAI({ go: $("fix-go"), stop: $("fix-stop"), note: $("fix-note"), work: async (signal) => {
+      const data = await sampleFn.json([
+        `És um ${who}. Registo pretendido: ${reg}.`,
+        `Corrige APENAS erros de ${focus}. Não mudes o sentido, a estrutura nem a voz do autor.`,
+        reg === "profissional" ? "Se houver uma informalidade clara para um contexto profissional, podes corrigi-la e explicar." : "Mantém o tom informal.",
+        "Se o texto estiver certo, devolve-o igual com uma lista vazia. Não inventes correções. Se a norma aceitar duas formas, não corrijas.",
+        known ? `Erros que esta pessoa costuma dar (atenção especial): ${known}` : "",
+        'Responde só com JSON: {"corrigido": string, "correcoes": [{"de": string, "para": string, "regra": string}]}',
+        "Cada regra: uma linha, em português de Portugal, com a razão gramatical.",
+        "", "Texto:", '"""', text.slice(0, 12000), '"""',
+      ].filter(Boolean).join("\n"), opts({ signal }));
+      const list = Array.isArray(data?.correcoes) ? data.correcoes : [];
+      $("fix-out").hidden = false;
+      $("fix-result").textContent = typeof data?.corrigido === "string" ? data.corrigido : text;
+      $("fix-list").replaceChildren(...(list.length ? list.map((c) => {
+        const keep = h("button", { class: "btn small ghost", text: "Guardar nos meus erros" });
+        keep.addEventListener("click", () => { keepError(c); keep.disabled = true; keep.textContent = "Guardado"; });
+        return h("div", { class: "fix" },
+          h("div", {}, h("div", {}, h("del", { text: String(c.de ?? "") }), " → ", h("ins", { text: String(c.para ?? "") })), h("div", { class: "muted small", text: String(c.regra ?? "") })),
+          keep);
+      }) : [h("p", { class: "muted", text: "Não encontrei erros." })]));
+    } }).then(() => { if (!$("fix-out").hidden) $("fix-note").textContent = "Confirma as correções antes de enviar o texto."; });
+  });
+  $("fix-copy").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText($("fix-result").textContent); $("fix-copy").textContent = "Copiado"; }
+    catch { const r = document.createRange(); r.selectNodeContents($("fix-result")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $("fix-copy").textContent = "Selecionado: Ctrl+C"; }
+    setTimeout(() => { $("fix-copy").textContent = "Copiar"; }, 2000);
+  });
+
+  // =========================================================== ESCRITA
+  let wrMode = "coerencia";
+  segGroup("wr-seg", (v) => { wrMode = v; $("wr-text").placeholder = v === "desbloquear" ? "Descreve a ideia, o que já tens e onde paraste." : "Cola o texto."; });
+  function renderEscrita() {
+    const v = state.voice;
+    const n = v.amostras.length;
+    $("voice-state").textContent = v.perfil ? (v.confirmado ? `confirmado · ${n} textos` : `por confirmar · ${n} textos`) : n ? `${n} texto${n > 1 ? "s" : ""}` : "por construir";
+    $("voice-samples").replaceChildren(...v.amostras.map((a, i) => h("li", { class: "task" },
+      h("span", { class: "chip", text: String(i + 1) }),
+      h("span", { class: "muted small", text: `${a.slice(0, 120)}${a.length > 120 ? "…" : ""}` }),
+      h("button", { class: "btn small ghost", text: "Retirar", onclick: () => { v.amostras.splice(i, 1); saveVoice(); renderEscrita(); } }),
+    )));
+    $("voice-profile-wrap").hidden = !v.perfil;
+    $("voice-profile").textContent = v.perfil;
+    $("voice-ok").checked = !!v.confirmado;
+    $("voice-build").disabled = n < 1;
+  }
+  $("voice-add").addEventListener("click", () => {
+    const t = $("voice-sample").value.trim(); if (!t) return;
+    if (state.voice.amostras.length >= 5) { $("voice-note").textContent = "Já tens 5 textos. Retira um para acrescentar outro."; return; }
+    state.voice.amostras.push(t.slice(0, 4000)); state.voice.confirmado = false;
+    saveVoice(); $("voice-sample").value = ""; $("voice-note").textContent = state.voice.amostras.length < 3 ? "Com 3 ou mais textos o perfil fica mais fiável." : ""; renderEscrita();
+  });
+  $("voice-ok").addEventListener("change", (e) => { state.voice.confirmado = e.target.checked; saveVoice(); renderEscrita(); });
+  $("voice-build").addEventListener("click", () => {
+    const v = state.voice;
+    runAI({ go: $("voice-build"), stop: $("voice-stop"), note: $("voice-note"), work: async (signal) => {
+      $("voice-profile-wrap").hidden = false; $("voice-profile").textContent = "…";
+      const { text } = await sampleFn([
+        SAFE,
+        "Descreve a VOZ de escrita desta pessoa a partir dos textos dela. Não a compares com autores. Cada característica leva um exemplo curto tirado dos textos (entre aspas).",
+        "Secções (títulos curtos): Tom; Ritmo e frases; Vocabulário (o que usa e o que evita); Imagens e metáforas; Humor; Pessoa e distância narrativa; Temas recorrentes.",
+        v.amostras.length < 3 ? "Há menos de 3 textos: começa com a linha [Incerto: poucos textos]." : "",
+        "No máximo 300 palavras.",
+        "", ...v.amostras.map((a, i) => `TEXTO ${i + 1}:\n"""\n${a}\n"""`),
+      ].filter(Boolean).join("\n"), opts({ signal, onText: ({ text }) => { $("voice-profile").textContent = text; } }));
+      v.perfil = text; v.confirmado = false; saveVoice(); renderEscrita();
+    } });
+  });
+  $("wr-go").addEventListener("click", () => {
+    const text = $("wr-text").value.trim(); if (!text) return;
+    const v = state.voice;
+    const task = {
+      coerencia: [
+        "Verifica a COERÊNCIA INTERNA do texto: quem sabe o quê e quando; tempo e lugar; causa e efeito; personagens que agem contra o que o texto estabeleceu; objetos que aparecem ou desaparecem.",
+        "Para cada problema: citação curta, porque é um problema, e severidade (grave / médio / menor). Diz também 1–2 coisas que funcionam.",
+        "NÃO reescrevas o texto. No máximo 7 pontos.",
+      ],
+      tom: [
+        "Compara o texto com o PERFIL DE VOZ da pessoa (abaixo). Aponta onde o texto se afasta da voz dela, com citação curta, e pergunta se o desvio é intencional.",
+        v.perfil ? `PERFIL DE VOZ${v.confirmado ? " (confirmado pela pessoa)" : " (ainda não confirmado)"}:\n${v.perfil}` : "Não existe perfil de voz: diz isso na primeira linha, marca tudo como [Incerto] e sugere construir o perfil em \"A minha voz\".",
+        v.amostras.length < 3 ? "O perfil tem menos de 3 textos: marca as observações como [Incerto]." : "",
+        "NÃO reescrevas o texto. No máximo 7 pontos.",
+      ],
+      desbloquear: [
+        "A pessoa está bloqueada. Faz no máximo 3 perguntas abertas que a ajudem a avançar (o que quer a personagem agora; o pior que pode acontecer; o que ninguém diz).",
+        "Depois, 3 direções possíveis numa linha cada: A) conservadora, B) alternativa, C) radical. Descreve-as, não as escrevas em prosa.",
+        v.perfil ? `Respeita esta voz:\n${v.perfil}` : "",
+      ],
+    }[wrMode];
+    runAI({ go: $("wr-go"), stop: $("wr-stop"), note: $("wr-note"), work: async (signal) => {
+      $("wr-out").hidden = false; $("wr-result").textContent = "…";
+      await sampleFn([
+        SAFE,
+        "PAPEL: editor que ajuda a pessoa a escrever como ELA escreve. Nunca escreves por ela.",
+        ...task.filter(Boolean),
+        "", "TEXTO:", '"""', text.slice(0, 16000), '"""',
+      ].join("\n"), opts({ signal, onText: ({ text }) => { $("wr-result").textContent = text; } }));
+    } });
+  });
+
+  // =========================================================== ficheiros e pesquisa fora da página
+  let downloadsNs = null;
+  async function offerFile(filename, data, note) {
+    if (!downloadsNs) { note.textContent = "Descarregar só funciona dentro do Claude."; return; }
+    try { await downloadsNs.save({ filename, data }); note.textContent = "Ficheiro entregue."; }
+    catch (e) {
+      note.textContent = e?.code === "declined" ? "Cancelado." : e?.code === "rate_limited" ? "Já há um pedido aberto. Tenta daqui a pouco." : "Não foi possível descarregar nesta vista.";
+    }
+  }
+
+  const MD_HEADER = [
+    "# Tarefas",
+    "",
+    "<!--",
+    "Formato: - [ ] Título !1 @contexto ^AAAA-MM-DD ≈15m *mensal ~2 id:abc123",
+    "!1 alta · !3 baixa · ^prazo · *diaria|*semanal|*mensal|*anual · ~vezes adiada · id: sincronização (não mexer)",
+    "Exportado do Rumo. No computador: node scripts/rotina.mjs hoje",
+    "-->",
+  ].join("\n");
+  function taskLine(t) {
+    return [
+      `- [${t.feita ? "x" : " "}] ${t.t}`,
+      Number(t.p) !== 2 ? `!${t.p}` : "",
+      ...(t.ctx || []).map((c) => `@${c}`),
+      t.due ? `^${t.due}` : "", t.est ? `≈${t.est}` : "", t.rep ? `*${t.rep}` : "",
+      t.adiada ? `~${t.adiada}` : "", t.feita ? `✓${t.feita}` : "", `id:${t.id}`,
+    ].filter(Boolean).join(" ");
+  }
+  function tasksToMd(list) {
+    const block = (title, items) => [`## ${title}`, ...items.map(taskLine)].join("\n");
+    return `${[MD_HEADER,
+      block("Caixa de entrada", list.filter((t) => t.inbox)),
+      block("Tarefas", list.filter((t) => !t.inbox && !t.algumDia)),
+      block("Algum dia", list.filter((t) => !t.inbox && t.algumDia)),
+    ].join("\n\n")}\n`;
+  }
+  function mdToTasks(text) {
+    const out = [];
+    let section = "", inC = false;
+    for (const line of text.split(/\r?\n/)) {
+      const o = line.includes("<!--"), c = line.includes("-->");
+      if (inC || o) { inC = !c && (inC || o); continue; }
+      const hh = line.match(/^##\s+(.*)$/);
+      if (hh) { section = hh[1].trim(); continue; }
+      const m = line.match(/^\s*- \[( |x|X)\] (.*)$/);
+      if (!m) continue;
+      let s = m[2];
+      const take = (re) => { const r = s.match(re); if (r) s = s.replace(r[0], ""); return r?.[1]; };
+      const feita = take(/(?:^|\s+)✓(\d{4}-\d{2}-\d{2})(?!\S)/);
+      const due = take(/(?:^|\s+)\^(\d{4}-\d{2}-\d{2})(?!\S)/);
+      const prio = take(/(?:^|\s+)!([123])(?!\S)/);
+      const adiada = take(/(?:^|\s+)~(\d+)(?!\S)/);
+      const est = take(/(?:^|\s+)≈(\d+[mh])(?!\S)/);
+      const rep = take(/(?:^|\s+)\*(diaria|semanal|mensal|anual)(?!\S)/);
+      const id = take(/(?:^|\s+)id:([a-z0-9]+)(?!\S)/);
+      const ctx = [...s.matchAll(/(?:^|\s)@([\p{L}\p{N}_-]+)/gu)].map((x) => x[1]);
+      s = s.replace(/(?:^|\s+)@[\p{L}\p{N}_-]+/gu, "").trim();
+      if (!s) continue;
+      out.push({
+        id: id || newId(), t: s, p: prio ? Number(prio) : 2, due: due || "", rep: rep || "", adiada: Number(adiada) || 0,
+        feita: feita || (m[1] !== " " ? TODAY : null), inbox: section === "Caixa de entrada", algumDia: section === "Algum dia", ctx, est: est || "",
+      });
+    }
+    return out;
+  }
+  $("md-export").addEventListener("click", () => {
+    if (state.tasksExample) { $("md-note").textContent = "Isto ainda é o exemplo. Carrega em \"Começar a minha lista\" primeiro."; return; }
+    offerFile("tarefas.md", tasksToMd(state.tasks), $("md-note"));
+  });
+  $("md-file").addEventListener("change", async (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    try {
+      const list = mdToTasks(await f.text());
+      if (!list.length) { $("md-note").textContent = "Não encontrei tarefas no ficheiro (linhas do tipo \"- [ ] …\")."; return; }
+      const current = state.tasksExample ? 0 : state.tasks.length;
+      if (!confirm(`Substituir ${current ? `as ${current} tarefas desta página` : "a lista desta página"} pelas ${list.length} do ficheiro?`)) return;
+      state.tasks = list; state.tasksExample = false; saveTasks(); renderAll();
+      $("md-note").textContent = `Importadas ${list.length} tarefas.`;
+    } catch { $("md-note").textContent = "Não foi possível ler o ficheiro."; }
+  });
+  $("csv-export").addEventListener("click", () => {
+    const m = state.month;
+    const cell = (v) => (/[;"\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
+    const rows = [...movOf(m)].sort((a, b) => a.d.localeCompare(b.d))
+      .map((x) => [x.d, x.desc, Number(x.v).toFixed(2).replace(".", ","), x.cat || "", x.acc || ""].map(cell).join(";"));
+    if (!rows.length) { $("csv-note").textContent = "Sem movimentos neste mês."; return; }
+    offerFile(`${m}.csv`, `${["data;descricao;valor;categoria;conta", ...rows].join("\n")}\n`, $("csv-note"));
+  });
+
+  /** Copia um pedido para uma conversa normal do Claude (que pode pesquisar na web). */
+  async function copyForClaude(prompt, outEl) {
+    outEl.hidden = false;
+    const area = h("textarea", { readonly: true, "aria-label": "Pedido para colar no Claude", style: "min-height: 90px" });
+    area.value = prompt;
+    let copied = false;
+    try { await navigator.clipboard.writeText(prompt); copied = true; } catch { /* sem acesso à área de transferência */ }
+    outEl.replaceChildren(
+      h("p", { class: "note", text: copied
+        ? "Copiado. Abre uma conversa nova no Claude (com a pesquisa na web ativa), cola e envia. A resposta vem com fontes."
+        : "Seleciona o texto abaixo, copia-o, e cola-o numa conversa nova no Claude (com a pesquisa na web ativa)." }),
+      area,
+    );
+    if (!copied) { area.focus(); area.select(); }
+  }
+  const WEB_RULES = [
+    "Responde em português europeu.",
+    "Pesquisa na web antes de responder. Cada número ou facto (taxas, impostos, limites, estatísticas, datas) leva a fonte e a data de consulta.",
+    "Dá preferência a fontes oficiais ou primárias. Se não encontrares, diz \"não encontrado\" em vez de estimar.",
+    "Separa facto, opinião e sugestão. Termina com a lista de fontes (com links).",
+  ].join("\n");
+  $("inv-web").addEventListener("click", () => {
+    const q = $("inv-q").value.trim();
+    if (!q) { $("inv-note").textContent = "Escreve primeiro a pergunta."; return; }
+    const ctx = $("inv-ctx").checked && state.goals && !state.finExample ? `\nO meu contexto (dados meus): ${state.goals.slice(0, 1500)}` : "";
+    copyForClaude([
+      WEB_RULES,
+      "Estou em Portugal e quero perceber opções de poupança e investimento. Não quero recomendações de produtos concretos: explica tipos de opção, riscos, liquidez, custos e fiscalidade atual, e que perguntas devo fazer ao banco ou ao intermediário.",
+      "Fontes de referência: Portal do Cliente Bancário (Banco de Portugal), CMVM, IGCP (certificados de aforro e do Tesouro), Portal das Finanças.",
+      ctx,
+      "",
+      `Pergunta: ${q}`,
+    ].filter(Boolean).join("\n"), $("inv-web-out"));
+  });
+  $("chat-web").addEventListener("click", () => {
+    const last = turns.slice(-8);
+    if (!last.length) { $("chat-note").textContent = "Escreve primeiro a ideia a discutir."; return; }
+    copyForClaude([
+      WEB_RULES,
+      "Verifica os factos de que depende esta discussão. Para cada afirmação factual: [Verificado: fonte, data], [Disputado: o que dizem as fontes] ou [Não encontrado].",
+      "Depois diz, com base nesses factos, onde o meu argumento fica mais forte e onde fica mais fraco. Não concordes só para agradar.",
+      "",
+      "Conversa até agora:",
+      ...last.map((t) => `${t.role === "user" ? "Eu" : "Parceiro"}: ${t.content.slice(0, 1500)}`),
+    ].join("\n"), $("chat-web-out"));
+  });
+
+  // =========================================================== arranque
+  function renderView(name) {
+    ({ hoje: renderHoje, foco: renderFoco, semana: renderSemana, mes: renderMes, contas: renderContas, investir: () => {}, pensar: renderPensar, corretor: renderCorretor, escrita: renderEscrita })[name]?.();
+  }
+  function renderAll() {
+    renderHoje();
+    renderView(currentView);
+    if (currentView === "foco") renderFocusSelect();
+  }
+
+  $("mov-date").value = TODAY;
+  fillCats();
+  paintClock(25 * 60000, 25 * 60000);
+  let startTab = "hoje";
+  try { const t = sessionStorage.getItem("rumo-tab"); if (t && VIEWS.some((v) => v.id === t)) startTab = t; } catch { /* sem armazenamento */ }
+  selectTab(startTab);
+
+  connect().catch(() => toLocal());
+  (async () => {
+    const c = window.claude;
+    const hasUse = c && typeof c.use === "function";
+    [sampleFn, downloadsNs] = hasUse ? await Promise.all([c.use("sample"), c.use("downloads")]) : [null, null];
+    if (!sampleFn) {
+      for (const id of ["fix-note", "inv-note", "chat-note", "wr-note", "voice-note"]) $(id).textContent = "Esta função só funciona dentro do Claude.";
+    }
+  })();
+})();
+</script>

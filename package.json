@@ -1,0 +1,18 @@
+{
+  "name": "rumo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Rumo: assistente pessoal para o Claude (rotina, finanças, pensar, língua e escrita)",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "hoje": "node scripts/rotina.mjs hoje",
+    "resumo": "node scripts/financas.mjs resumo",
+    "sincronizar": "node scripts/sincronizar.mjs",
+    "cwos": "node scripts/cwos.mjs",
+    "test": "node --test scripts/cwos.test.mjs scripts/assistente.test.mjs scripts/sincronizar.test.mjs scripts/system.test.mjs",
+    "check": "node scripts/cwos.mjs validate && node scripts/cwos.mjs index"
+  }
+}
