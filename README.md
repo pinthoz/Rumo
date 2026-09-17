@@ -46,6 +46,10 @@ A claude.ai page with the same areas, for use in the browser or on a phone:
 - `/rumo` publishes it to your own account;
 - `/sincronizar` syncs it both ways with the local files.
 
+## Architecture
+
+How the pieces fit together (instructions, data, scripts, dashboard and sync): [docs/architecture.md](docs/architecture.md).
+
 ## Further reading (Portuguese)
 
 - [docs/guia.md](docs/guia.md): full user guide.
