@@ -9,7 +9,7 @@
 | fim de semana | | | | |
 
 ## Blocos de foco
-<!-- Ex.: 9h30–10h30 foco sem telemóvel. Quando é que ele tem mais energia? -->
+<!-- Ex.: 9h30–10h30 foco sem telemóvel. Quando é que o utilizador tem mais energia? -->
 
 ## Hábitos a construir (no máximo 2 de cada vez)
 | hábito | quando | versão mínima |
@@ -20,4 +20,4 @@
 - Semanal (15–20 min): `/semana`. Dia e hora:
 
 ## O que costuma fazê-lo dispersar
-<!-- Preenchido por ele: gatilhos, apps, horas do dia. -->
+<!-- Preenchido pelo utilizador: gatilhos, apps, horas do dia. -->

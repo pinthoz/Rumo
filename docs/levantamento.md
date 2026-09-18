@@ -30,8 +30,8 @@ As respostas decidem a configuração. Nada disto foi assumido.
 14. Tem textos antigos corrigidos que mostrem os erros habituais?
 
 ## Escrita
-15. O que escreve (contos, crónicas, poesia, um romance)? Tem **textos dele** para extrair o tom (style guide)?
+15. O que escreve (contos, crónicas, poesia, um romance)? Tem **textos do utilizador** para extrair o tom (style guide)?
 16. Que tipo de ajuda quer: perguntas e desbloqueio, verificação de coerência, ou crítica?
 
 ## Privacidade
-17. Os dados financeiros ficam só no computador dele (estão fora do git). Quer backup? Onde?
+17. Os dados financeiros ficam só no computador do utilizador (estão fora do git). Quer backup? Onde?

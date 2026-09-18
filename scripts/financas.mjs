@@ -87,6 +87,8 @@ export function toDate(s) {
 }
 
 function readTable(file) {
+  const model = file.replace(/\.csv$/, '.modelo.csv'); // regras e orçamento: o modelo está no git, o ficheiro real não
+  if (!fs.existsSync(file) && fs.existsSync(model)) fs.copyFileSync(model, file);
   if (!fs.existsSync(file)) return [];
   const text = read(file);
   const rows = parseCsv(text, detectSep(text.split(/\r?\n/)[0]));

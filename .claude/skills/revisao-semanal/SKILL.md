@@ -5,7 +5,7 @@ description: Área Rotina. Revisão semanal de 15–20 minutos — o que foi fei
 # revisao-semanal
 
 ## Propósito
-Fechar a semana com clareza e começar a seguinte com poucas prioridades escolhidas por ele.
+Fechar a semana com clareza e começar a seguinte com poucas prioridades escolhidas pelo utilizador.
 
 ## Quando usar
 - No dia e hora marcados em `rotina/rotina.md`, ou com `/semana`.
@@ -20,7 +20,7 @@ Fechar a semana com clareza e começar a seguinte com poucas prioridades escolhi
 ## Processo
 1. Corre `node scripts/rotina.mjs semana`.
 2. **Reconhecer:** lista o que foi feito, sem comentários exagerados.
-3. **Limpar:** percorre as tarefas atrasadas e as mais adiadas. Para cada uma, o utilizador escolhe: manter com nova data, dividir, mover para "Algum dia" ou apagar. Não decidas por ele.
+3. **Limpar:** percorre as tarefas atrasadas e as mais adiadas. Para cada uma, o utilizador escolhe: manter com nova data, dividir, mover para "Algum dia" ou apagar. Não decidas pelo utilizador.
 4. **Caixa de entrada a zero:** triagem como em `planear-dia`.
 5. **Próxima semana:** pergunta pelas 3 prioridades da semana e marca-as com `!1`.
 6. **Uma melhoria:** pergunta o que atrapalhou mais esta semana e acorda **uma** mudança pequena para a próxima.

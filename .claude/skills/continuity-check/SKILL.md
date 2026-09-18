@@ -35,7 +35,7 @@ O âmbito indicado. Nada mais é carregado sem o passo 1.
    - regras do mundo (`world/rules.md`, se existir, e as secções "Regras e restrições" das entradas de mundo);
    - scene sheet contra texto, dentro do mesmo ficheiro (a sheet tem autoridade de PROVISIONAL).
    - Nas omissões (algo que devia estar e não está), indica o ficheiro e a secção em vez da linha.
-3. **Futuro (G10):** se a alteração muda um facto, procura com `cwos deps` e Grep as cenas posteriores que dependem dele.
+3. **Futuro (G10):** se a alteração muda um facto, procura com `cwos deps` e Grep as cenas posteriores que dependem desse facto.
 4. Classifica cada problema: P0 para contradição com CANON; P1 ou P2 para contradição entre entidades não canónicas ou para ambiguidades.
 5. **Não corrijas.** Para cada conflito, indica as fontes em conflito, o nível de autoridade de cada uma (hierarquia do CLAUDE.md) e as opções.
 6. Invenções do texto que ainda não estão na bible passam a candidatas a PROPOSTA.

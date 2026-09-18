@@ -27,12 +27,12 @@ Ajudar o utilizador a perceber as opções e a decidir por si, com informação 
    Escreve `[Verificado: fonte, data]`. Se não conseguires confirmar, `[Não sei]`. **Nunca de memória.**
 3. **Comparar** numa tabela: produto | risco | liquidez | custos | fiscalidade | horizonte adequado | para que objetivo serve | fonte.
 4. **Explicar riscos**: perda de capital, inflação, concentração, custos, liquidez. Rentabilidades passadas não garantem futuras.
-5. **Ligar ao perfil dele** (horizonte, tolerância a perdas) sem escolher por ele. Se ele pedir uma opinião, dá-a marcada como `[Opinião]` e diz em que pressupostos assenta.
+5. **Ligar ao perfil do utilizador** (horizonte, tolerância a perdas) sem escolher pelo utilizador. Se o utilizador pedir uma opinião, dá-a marcada como `[Opinião]` e diz em que pressupostos assenta.
 6. Recomenda, uma vez, confirmar com um profissional certificado (intermediário registado na CMVM ou consultor autorizado) para decisões relevantes.
-7. Guarda a pesquisa em `financas/notas/AAAA-MM-DD-tema.md` com as fontes, se ele quiser.
+7. Guarda a pesquisa em `financas/notas/AAAA-MM-DD-tema.md` com as fontes, se o utilizador quiser.
 
 ## Output
-Uma explicação curta, a tabela comparativa com fontes e datas, as perguntas que ele deve fazer a si próprio ou ao banco e as fontes.
+Uma explicação curta, a tabela comparativa com fontes e datas, as perguntas que o utilizador deve fazer a si próprio ou ao banco e as fontes.
 
 ## Critérios de qualidade
 - Zero números sem fonte e data.

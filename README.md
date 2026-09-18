@@ -1,40 +1,65 @@
 # Rumo
 
-Assistente pessoal para o Claude, organizado por **áreas separadas**, para não misturar assuntos nem inventar informação:
+A personal assistant built on Claude, organised into **separate areas** so that topics don't get mixed up and information isn't made up. The assistant speaks European Portuguese, so the commands and folder names are in Portuguese.
 
-| área | para quê | comandos |
+| area | what it's for | commands |
 |---|---|---|
-| **Rotina** | organizar o dia, 3 prioridades, tarefas recorrentes, vencer a procrastinação, revisão semanal | `/hoje` `/foco` (blocos com temporizador) `/feito` `/captura` `/travado` `/semana` `/lembretes` (notificações Windows/Mac); as prioridades aparecem ao abrir o Claude Code |
-| **Finanças** | importar extratos, categorizar gastos, orçamento e quanto ainda se pode gastar, despesas fixas e subscrições, património, aprender a investir (com fontes) | `/gastos` `/financas` `/investir` |
-| **Pensar** | discutir ideias com pesquisa real e questionamento da lógica | `/pensar` |
-| **Língua** | corretor de português europeu e de inglês, pessoal e profissional | `/pt` `/en` |
-| **Escrita** | escrita criativa: rever textos soltos contra a voz dele, verificar a coerência, desbloquear (sem escrever por ele); projetos para obras longas | `/rever` · `/brief` `/critique` `/continuity` … |
+| **Rotina** (routine) | plan the day, 3 priorities, optionally triage actionable Gmail messages, recurring tasks, beating procrastination, weekly review | `/hoje` `/foco` (focus blocks with a timer) `/feito` `/captura` `/travado` `/semana` `/lembretes` (Windows/Mac notifications); priorities show up when Claude Code opens |
+| **Finanças** (finances) | import bank statements, categorise spending, budget and what's left to spend, fixed costs and subscriptions, net worth, learning to invest (with sources) | `/gastos` `/financas` `/investir` |
+| **Carreira** (job search) | find openings across job boards and company ATS pages (plus a logged-out LinkedIn search, on request), score each one against your own CV requirement by requirement, and keep one list of applications with follow-up dates | `/procurar` `/vaga` `/candidaturas` |
+| **Pensar** (thinking) | discuss ideas with real research and challenges to the reasoning | `/pensar` |
+| **Língua** (language) | European Portuguese and English proofreading, personal and professional | `/pt` `/en` |
+| **Escrita** (writing) | creative writing: review standalone texts against the author's voice, check consistency, get unstuck (without writing for them); projects for long-form work | `/rever` · `/brief` `/critique` `/continuity` … |
 
-## Como está organizado
+## Layout
 
 ```text
-CLAUDE.md            regras gerais: uma área por conversa, não inventar, o utilizador decide
-rotina/              CLAUDE.md da área + tarefas.md (criado a partir do modelo, fora do git) + rotina.md
-financas/            CLAUDE.md da área + regras, orçamento, modelos (os dados reais ficam fora do git)
-pensar/              CLAUDE.md da área + notas
-lingua/              CLAUDE.md da área + erros frequentes + glossário
-escrita/             CLAUDE.md da área + projetos, templates e docs (sistema de escrita criativa)
-.claude/             skills, agents e comandos
-scripts/             rotina.mjs · lembretes.mjs · financas.mjs · cwos.mjs (+ testes)
-docs/                guia, uso na app Claude, limites, perguntas para configurar
+CLAUDE.md            general rules: one area per conversation, don't make things up, the user decides
+rotina/              area CLAUDE.md + tarefas.md + rotina.md
+financas/            area CLAUDE.md + rules, budget, templates
+carreira/            area CLAUDE.md + CV, search profile, sources, applications
+pensar/              area CLAUDE.md + notes
+lingua/              area CLAUDE.md + frequent mistakes + glossary
+escrita/             area CLAUDE.md + projects, templates and docs (creative writing system)
+.claude/             skills, agents and commands
+scripts/             rotina.mjs · lembretes.mjs · financas.mjs · carreira.mjs · sincronizar.mjs · cwos.mjs (+ tests)
+docs/                user guide, Claude app usage, limitations, setup questions (in Portuguese)
+prototipo/rumo.html  the Rumo dashboard for claude.ai
 ```
 
-O `CLAUDE.md` de cada área só é lido quando se trabalha nessa área. É assim que se evita que o assistente misture assuntos.
+Each area's `CLAUDE.md` is only loaded when working in that area. This is what keeps the assistant from mixing topics.
 
-## Começar
+**Personal data stays out of git.** Files with personal data aren't tracked: tasks, routine, writing voice, frequent mistakes, glossary, budget, categorisation rules, accounts, goals, bank transactions and notes, CV, search profile and job applications. The repository only holds a `*.modelo.*` template for each file. The scripts, or the assistant, create the personal copy on first use.
+
+## Getting started
 
 ```bash
-# requisitos: Claude Code e Node >= 18
+# requirements: Claude Code and Node >= 18
 node scripts/rotina.mjs hoje
 node scripts/financas.mjs help
 npm test
 ```
 
-Depois, no Claude Code: `/hoje`.
+Then, in Claude Code: `/hoje`.
 
-**Rumo:** painel no claude.ai com as mesmas áreas (`/rumo` publica-o na tua conta; `/sincronizar` junta-o com os ficheiros daqui). O guia completo está em [docs/guia.md](docs/guia.md). Para usar na app Claude, ver [docs/claude-app.md](docs/claude-app.md). O que o sistema faz, e o que não consegue fazer, está em [docs/limites.md](docs/limites.md).
+For a local visual interface, run `npm run atalho` once on Windows: it draws the Rumo compass into `prototipo/rumo.ico` and creates a **`Rumo`** shortcut in the project folder that opens the dashboard with no console window. Elsewhere, run `npm run painel`. It opens the same dashboard in the browser, connected only to the personal files in this folder. The server runs in the background, so no terminal window has to stay open: `npm run painel:estado` says whether it is running and `npm run painel:parar` stops it. The AI-backed tabs work there too: the local server asks the Claude Code CLI installed on the machine (`claude -p`, restricted mode), so no API key is needed. The **Configurar** area edits routine, career profile, CV, financial goals, glossary, frequent errors and writing voice without needing to find or open Markdown files.
+
+## Rumo dashboard
+
+A claude.ai page with the same areas, for use in the browser or on a phone:
+- `/rumo` publishes it to your own account;
+- `/sincronizar` syncs it both ways with the local files.
+
+## Architecture
+
+How the pieces fit together (instructions, data, scripts, dashboard and sync): [docs/architecture.md](docs/architecture.md).
+
+## Credits
+
+The Carreira area borrows its shape — a requirement-by-requirement evaluation, one tracker file, posting-legitimacy checks — from [career-ops](https://github.com/career-ops-hq/career-ops) (MIT), rebuilt here with no dependencies. It reads job boards only through their public APIs, one request per source per day, keeping each posting's original link and source, which is what Remotive and Remote OK ask for. LinkedIn has no public jobs API and its terms forbid automated collection, so it is never scraped on a schedule: it is searched only when you ask, logged out.
+
+## Further reading (Portuguese)
+
+- [docs/guia.md](docs/guia.md): full user guide.
+- [docs/claude-app.md](docs/claude-app.md): using Rumo in the Claude app.
+- [docs/limites.md](docs/limites.md): what the system can and can't do.

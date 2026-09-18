@@ -19,4 +19,4 @@
 - Restrições (liquidez, éticas, etc.):
 
 ## Decisões tomadas
-<!-- Data — decisão — porquê (ele decide; o assistente só regista). -->
+<!-- Data — decisão — porquê (o utilizador decide; o assistente só regista). -->

@@ -11,7 +11,7 @@ Cria um Projeto na app para cada área e, nas instruções do projeto, cola o co
 | Finanças | regras gerais + `financas/CLAUDE.md` + skills `financas-analise` e `investimentos` | exportações do resumo (não os extratos completos) |
 | Pensar | regras gerais + `pensar/CLAUDE.md` + skill `parceiro-pensamento` | — |
 | Língua | regras gerais + `lingua/CLAUDE.md` + skills `corretor-pt` e `corretor-en` | `lingua/erros-frequentes.md` |
-| Escrita | regras gerais + `escrita/CLAUDE.md` (secção "Dois modos") + skill `rever-texto` | `escrita/voz.md` e alguns textos dele |
+| Escrita | regras gerais + `escrita/CLAUDE.md` (secção "Dois modos") + skill `rever-texto` | `escrita/voz.md` e alguns textos do utilizador |
 
 ## Memória e mistura de contextos
 O problema de o assistente "trazer coisas que sabe de mim" vem normalmente da **memória** e da **pesquisa em conversas antigas**. A app tem definições para as controlar. Confirma na versão atual onde estão (costumam estar nas definições da conta, em funcionalidades ou privacidade), porque os nomes mudam. Recomendação:
@@ -21,4 +21,4 @@ O problema de o assistente "trazer coisas que sabe de mim" vem normalmente da **
 
 ## Limitações na app
 - Não há contas automáticas: os resumos financeiros ficam menos rigorosos. Para controlo financeiro a sério, usar o Claude Code (ou uma folha de cálculo que o assistente ajude a montar).
-- As tarefas não ficam num ficheiro partilhado. Alternativa: a app de tarefas que ele já usa, com o assistente só a ajudar a planear.
+- As tarefas não ficam num ficheiro partilhado. Alternativa: a app de tarefas que o utilizador já usa, com o assistente só a ajudar a planear.

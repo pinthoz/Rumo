@@ -24,8 +24,8 @@ Um inglês correto e natural, adequado ao contexto, e o utilizador a perceber po
    - **calques do português**, com explicação ("assist a meeting" → "attend a meeting"; "I stay waiting" → "I look forward to…"; "actually" ≠ "atualmente").
 3. **Registo profissional:** frase de abertura direta, um pedido claro, fecho adequado (e não "Kisses" nem "Hugs"), tom cortês sem excesso de formalidade.
 4. Explica as correções **em português**, numa linha cada.
-5. Se ele pedir uma tradução, traduz o sentido e não palavra a palavra, e assinala as expressões sem equivalente direto.
-6. Os erros recorrentes vão para `lingua/erros-frequentes.md` (com o acordo dele) e os termos preferidos para `lingua/glossario.md`.
+5. Se o utilizador pedir uma tradução, traduz o sentido e não palavra a palavra, e assinala as expressões sem equivalente direto.
+6. Os erros recorrentes vão para `lingua/erros-frequentes.md` (com o acordo do utilizador) e os termos preferidos para `lingua/glossario.md`.
 
 ## Output
 O texto corrigido, a lista de correções (em português) e, se fizer sentido, uma versão alternativa mais natural ou mais formal, marcada à parte.

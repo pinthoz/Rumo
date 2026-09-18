@@ -1,6 +1,6 @@
-# A voz dele
+# A voz do utilizador
 
-> Perfil da forma como o utilizador escreve, construído **a partir de textos dele** (skill `rever-texto`, "primeira vez"). Serve de baliza para rever textos soltos e para os projetos que não tenham style guide próprio.
+> Perfil da forma como o utilizador escreve, construído **a partir de textos do utilizador** (skill `rever-texto`, "primeira vez"). Serve de baliza para rever textos soltos e para os projetos que não tenham style guide próprio.
 > Estado: **por preencher**. Até haver pelo menos 3 textos analisados, qualquer comentário sobre "tom" é marcado como `[Incerto]`.
 
 ## Textos analisados
@@ -15,7 +15,7 @@
 | % parágrafos de diálogo | | |
 | advérbios em -mente / 1000 | | |
 
-## Características (com exemplos dos textos dele)
+## Características (com exemplos dos textos do utilizador)
 - **Tom:**
 - **Ritmo e frases:**
 - **Vocabulário (o que usa, o que nunca usa):**
@@ -24,8 +24,8 @@
 - **Pessoa e distância narrativa:**
 - **Temas recorrentes:**
 
-## O que ele quer evitar
+## O que o utilizador quer evitar
 -
 
-## Confirmado por ele
-<!-- Data — características que ele reconheceu como suas. Só estas contam como "a voz dele". -->
+## Confirmado pelo utilizador
+<!-- Data — características que o utilizador reconheceu como suas. Só estas contam como "a voz do utilizador". -->

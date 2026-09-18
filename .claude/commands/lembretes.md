@@ -16,7 +16,7 @@ Os lembretes são notificações do sistema geradas por script (sem IA), a parti
 **Instalar** (ou vazio):
 1. Pergunta, numa só mensagem, se os horários por omissão servem ou que horários prefere, e se quer desligar algum. Poucos lembretes funcionam melhor do que muitos.
 2. Mostra o plano com `node scripts/lembretes.mjs instalar --dry …`, com as opções escolhidas.
-3. Depois de ele confirmar, corre sem `--dry` e a seguir `node scripts/lembretes.mjs testar`. Pergunta se a notificação apareceu. No Mac, se não aparecer, indica a mensagem do script sobre as permissões de notificações.
+3. Depois de o utilizador confirmar, corre sem `--dry` e a seguir `node scripts/lembretes.mjs testar`. Pergunta se a notificação apareceu. No Mac, se não aparecer, indica a mensagem do script sobre as permissões de notificações.
 
 **remover / estado / testar:** corre `node scripts/lembretes.mjs <ação>` e resume o resultado numa linha.
 

@@ -22,7 +22,7 @@ Ter os movimentos completos e categorizados, com o mínimo de trabalho manual.
 1. **Extrato:**
    1. `node scripts/financas.mjs importar <ficheiro> --conta <nome>`.
    2. Se falhar por causa das colunas, abre só as primeiras 15 linhas do ficheiro, identifica os nomes das colunas e repete com `--colunas "data=…,descricao=…,valor=…"`.
-   3. Explica ao utilizador como exportar o extrato em CSV no banco dele, só se ele não souber. Não inventes menus do homebanking: se não sabes, di-lo.
+   3. Explica ao utilizador como exportar o extrato em CSV no banco, só se o utilizador não souber. Não inventes menus do homebanking: se não sabes, di-lo.
 2. **Despesa avulsa:** acrescenta uma linha ao ficheiro do mês `financas/movimentos/AAAA-MM.csv` (valor negativo, conta `dinheiro`), mantendo o formato. Confirma a data e o valor antes.
 3. **Categorizar:**
    1. `node scripts/financas.mjs categorizar`.

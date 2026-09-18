@@ -21,17 +21,17 @@ Responder com números exatos a "como estou?" e transformar os números em 1–3
 2. Corre o comando que responde à pergunta. Se houver movimentos sem categoria, diz quanto pesam antes de concluir.
    - `node scripts/financas.mjs resumo [mês]`: o mês, o orçamento e **quanto ainda pode gastar** (por dia, se for o mês corrente).
    - `patrimonio`: "quanto dinheiro tenho?".
-   - `recorrentes`: despesas fixas e subscrições. Confirma cada linha com ele, porque a deteção é por descrição.
+   - `recorrentes`: despesas fixas e subscrições. Confirma cada linha com o utilizador, porque a deteção é por descrição.
 3. **Leitura dos números** (só com o que o script deu):
    - saldo e taxa de poupança do mês;
-   - categorias acima do limite (❌) ou perto dele (⚠);
+   - categorias acima do limite (❌) ou perto do limite (⚠);
    - categorias muito acima da média dos meses anteriores;
    - as maiores despesas;
    - o peso das despesas recorrentes (subscrições esquecidas são o corte mais fácil).
-   - Contas a pagar com data certa (renda, seguros) podem virar tarefas recorrentes na área Rotina (`*mensal`), mas só se ele pedir.
-4. **Opções** (no máximo 3), cada uma com o impacto em euros calculado a partir dos dados. Por exemplo: "Restauração está 120 € acima da média; voltar à média liberta cerca de 120 €/mês". Marca como `[Sugestão]`. Ele decide.
+   - Contas a pagar com data certa (renda, seguros) podem virar tarefas recorrentes na área Rotina (`*mensal`), mas só se o utilizador pedir.
+4. **Opções** (no máximo 3), cada uma com o impacto em euros calculado a partir dos dados. Por exemplo: "Restauração está 120 € acima da média; voltar à média liberta cerca de 120 €/mês". Marca como `[Sugestão]`. O utilizador decide.
 5. **Objetivos:** compara com `objetivos.md` (fundo de emergência, metas).
-6. Regista as decisões que ele tomar em `objetivos.md` → "Decisões tomadas".
+6. Regista as decisões que o utilizador tomar em `objetivos.md` → "Decisões tomadas".
 
 ## Output
 ```

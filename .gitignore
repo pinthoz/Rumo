@@ -6,6 +6,11 @@ financas/notas/
 pensar/conversas/
 rotina/revisoes/
 rotina/tarefas.md
+rotina/emails.json
+carreira/candidaturas.csv
+carreira/vagas.csv
+carreira/relatorios/
+carreira/.procura.json
 config/rumo.json
 *.extrato.csv
 extratos/
@@ -14,3 +19,18 @@ node_modules/
 
 # Estado da sincronização com o Rumo
 .sync/
+
+# Ficheiros pessoais criados a partir do <nome>.modelo.* ao lado
+rotina/rotina.md
+escrita/voz.md
+lingua/erros-frequentes.md
+lingua/glossario.md
+financas/orcamento.csv
+financas/regras.csv
+carreira/perfil.md
+carreira/cv.md
+carreira/fontes.csv
+
+# Atalho do Windows: tem caminhos deste computador (cria-se com "npm run atalho")
+Rumo.lnk
+rotina/agenda.json

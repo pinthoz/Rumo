@@ -8,6 +8,9 @@
  *   Linux:   notificação via notify-send (o agendamento fica a cargo do cron do utilizador).
  *
  * O texto de cada lembrete é gerado por `rotina.mjs lembrete <tipo>`, sem modelo de IA.
+ * Opcionalmente (--vagas HH:MM), agenda também a procura diária de vagas da área Carreira
+ * (`carreira.mjs procurar --notificar`). É a única tarefa agendada que usa a rede, por isso
+ * nunca se instala sem ser pedida, e tem um lançador próprio para não mexer nos lembretes.
  * Zero dependências (Node >= 18). Uso: node scripts/lembretes.mjs help
  */
 import fs from 'node:fs';
@@ -18,12 +21,16 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROTINA = path.join(HERE, 'rotina.mjs');
+const CARREIRA = path.join(HERE, 'carreira.mjs');
 export const KINDS = ['manha', 'tarde', 'prazo', 'semana'];
+/** Tarefa agendada da área Carreira: não é um lembrete e só existe se for pedida. */
+export const JOB = 'vagas';
 const DEFAULTS = { manha: '09:00', tarde: '18:30', prazo: '15:00', semana: 'dom-17:00' };
 const DAYS = { dom: 0, seg: 1, ter: 2, qua: 3, qui: 4, sex: 5, sab: 6 };
 const WIN_DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-const LABEL = (kind) => `pt.assistente.lembrete.${kind}`;
-const WIN_TASK = (kind) => `Assistente\\Lembrete ${kind}`;
+const LABEL = (kind) => (kind === JOB ? 'pt.assistente.vagas' : `pt.assistente.lembrete.${kind}`);
+const WIN_TASK = (kind) => (kind === JOB ? 'Assistente\\Procura de vagas' : `Assistente\\Lembrete ${kind}`);
+const ALL = [...KINDS, JOB];
 
 export class CliError extends Error {}
 
@@ -43,7 +50,10 @@ export function scheduleFrom(flags) {
     .map((s) => s.trim())
     .filter(Boolean);
   for (const k of off) if (!KINDS.includes(k)) throw new CliError(`--desativar: tipo desconhecido "${k}" (${KINDS.join(', ')})`);
-  return KINDS.filter((k) => !off.includes(k)).map((k) => parseWhen(k, flags[k] || DEFAULTS[k]));
+  const list = KINDS.filter((k) => !off.includes(k)).map((k) => parseWhen(k, flags[k] || DEFAULTS[k]));
+  // A procura de vagas só entra quando é pedida com uma hora.
+  if (flags[JOB] !== undefined) list.push(parseWhen(JOB, flags[JOB]));
+  return list;
 }
 
 const hhmm = (s) => `${String(s.hour).padStart(2, '0')}:${String(s.minute).padStart(2, '0')}`;
@@ -52,15 +62,26 @@ const describeWhen = (s) => (s.weekday === null ? `todos os dias às ${hhmm(s)}`
 // ---------------------------------------------------------------- notificação
 
 // Toast nativo do Windows 10/11 via WinRT; se falhar, balão da área de notificação.
+// O Windows deita fora, sem erro, os toasts de aplicações que não conhece: por isso o Rumo
+// regista-se primeiro como aplicação de notificações (AppUserModelId), com nome e ícone próprios.
 const PS_TOAST = `
 $t = $env:ASSIST_TITLE; $b = $env:ASSIST_BODY
+$app = 'Rumo.Assistente'
+try {
+  $key = "HKCU:\\SOFTWARE\\Classes\\AppUserModelId\\$app"
+  if (-not (Test-Path $key)) { New-Item -Path $key -Force | Out-Null }
+  New-ItemProperty -Path $key -Name DisplayName -Value 'Rumo' -PropertyType String -Force | Out-Null
+  New-ItemProperty -Path $key -Name ShowInSettings -Value 1 -PropertyType DWord -Force | Out-Null
+  if ($env:ASSIST_ICON -and (Test-Path $env:ASSIST_ICON)) {
+    New-ItemProperty -Path $key -Name IconUri -Value $env:ASSIST_ICON -PropertyType String -Force | Out-Null
+  }
+} catch { }
 try {
   [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
   [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null
   $esc = [System.Security.SecurityElement]
   $xml = New-Object Windows.Data.Xml.Dom.XmlDocument
   $xml.LoadXml('<toast><visual><binding template="ToastGeneric"><text>' + $esc::Escape($t) + '</text><text>' + $esc::Escape($b) + '</text></binding></visual></toast>')
-  $app = '{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe'
   [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($app).Show([Windows.UI.Notifications.ToastNotification]::new($xml))
 } catch {
   Add-Type -AssemblyName System.Windows.Forms, System.Drawing
@@ -78,7 +99,7 @@ export function notifyCommand(title, body, platform = process.platform) {
     return {
       cmd: 'powershell.exe',
       args: ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-EncodedCommand', Buffer.from(PS_TOAST, 'utf16le').toString('base64')],
-      env: { ASSIST_TITLE: title, ASSIST_BODY: body },
+      env: { ASSIST_TITLE: title, ASSIST_BODY: body, ASSIST_ICON: path.join(HERE, '..', 'prototipo', 'rumo.ico') },
     };
   }
   if (platform === 'darwin') {
@@ -108,11 +129,12 @@ export function notify(title, body) {
 
 const xmlEsc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-export function plistFor(s, node = process.execPath, script = ROTINA) {
+export function plistFor(s, node = process.execPath, script = s.kind === JOB ? CARREIRA : ROTINA) {
   const when =
     `<key>Hour</key><integer>${s.hour}</integer><key>Minute</key><integer>${s.minute}</integer>` +
     (s.weekday !== null ? `<key>Weekday</key><integer>${s.weekday}</integer>` : '');
-  const args = [node, script, 'lembrete', s.kind, '--notificar'].map((a) => `<string>${xmlEsc(a)}</string>`).join('');
+  const argv = s.kind === JOB ? [node, script, 'procurar', '--notificar'] : [node, script, 'lembrete', s.kind, '--notificar'];
+  const args = argv.map((a) => `<string>${xmlEsc(a)}</string>`).join('');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -136,28 +158,45 @@ export function vbsLauncher(node = process.execPath, script = ROTINA) {
   ].join('\r\n');
 }
 
+/** Lançador próprio da procura de vagas: separado para não mudar o dos lembretes já instalados. */
+export function vbsJobLauncher(node = process.execPath, script = CARREIRA) {
+  const q = (s) => s.replace(/"/g, '""');
+  return [
+    "' Gerado por scripts/lembretes.mjs: procura vagas novas sem abrir nenhuma janela.",
+    'Set sh = CreateObject("WScript.Shell")',
+    `sh.Run """${q(node)}"" ""${q(script)}"" procurar --notificar", 0, False`,
+    '',
+  ].join('\r\n');
+}
+
 /** Lista de ações (sem as executar) para instalar, remover ou consultar os lembretes. */
 export function plan(action, platform, schedule, env = process.env) {
   const steps = [];
   if (platform === 'win32') {
     const dir = path.join(env.LOCALAPPDATA || os.homedir(), 'Assistente');
     const vbs = path.join(dir, 'lembrete.vbs');
+    const jobVbs = path.join(dir, 'vagas.vbs');
     if (action === 'instalar') {
       steps.push({ write: vbs, content: vbsLauncher() });
-      for (const s of schedule) {
+      // A procura de vagas vai no fim, com o seu lançador: os lembretes ficam exatamente como eram.
+      const ordered = [...schedule.filter((s) => s.kind !== JOB), ...schedule.filter((s) => s.kind === JOB)];
+      for (const s of ordered) {
         const when = s.weekday === null ? ['/SC', 'DAILY'] : ['/SC', 'WEEKLY', '/D', WIN_DAYS[s.weekday]];
+        const isJob = s.kind === JOB;
+        if (isJob) steps.push({ write: jobVbs, content: vbsJobLauncher() });
         steps.push({
-          info: `${s.kind}: ${describeWhen(s)}`,
+          info: `${isJob ? 'procura de vagas' : s.kind}: ${describeWhen(s)}`,
           cmd: 'schtasks',
-          args: ['/Create', '/F', '/TN', WIN_TASK(s.kind), '/TR', `wscript.exe "${vbs}" ${s.kind}`, ...when, '/ST', hhmm(s)],
+          args: ['/Create', '/F', '/TN', WIN_TASK(s.kind), '/TR', isJob ? `wscript.exe "${jobVbs}"` : `wscript.exe "${vbs}" ${s.kind}`, ...when, '/ST', hhmm(s)],
         });
       }
     } else if (action === 'remover') {
-      for (const k of KINDS) steps.push({ cmd: 'schtasks', args: ['/Delete', '/F', '/TN', WIN_TASK(k)], optional: true });
+      for (const k of ALL) steps.push({ cmd: 'schtasks', args: ['/Delete', '/F', '/TN', WIN_TASK(k)], optional: true });
       steps.push({ remove: vbs });
+      steps.push({ remove: jobVbs });
       steps.push({ remove: dir, ifEmpty: true });
     } else {
-      for (const k of KINDS) steps.push({ info: k, cmd: 'schtasks', args: ['/Query', '/TN', WIN_TASK(k), '/FO', 'LIST'], optional: true, show: true });
+      for (const k of ALL) steps.push({ info: k === JOB ? 'procura de vagas' : k, cmd: 'schtasks', args: ['/Query', '/TN', WIN_TASK(k), '/FO', 'LIST'], optional: true, show: true });
     }
     return steps;
   }
@@ -169,15 +208,15 @@ export function plan(action, platform, schedule, env = process.env) {
       for (const s of schedule) {
         steps.push({ cmd: 'launchctl', args: ['bootout', `gui/${uid}`, file(s.kind)], optional: true });
         steps.push({ write: file(s.kind), content: plistFor(s) });
-        steps.push({ info: `${s.kind}: ${describeWhen(s)}`, cmd: 'launchctl', args: ['bootstrap', `gui/${uid}`, file(s.kind)] });
+        steps.push({ info: `${s.kind === JOB ? 'procura de vagas' : s.kind}: ${describeWhen(s)}`, cmd: 'launchctl', args: ['bootstrap', `gui/${uid}`, file(s.kind)] });
       }
     } else if (action === 'remover') {
-      for (const k of KINDS) {
+      for (const k of ALL) {
         steps.push({ cmd: 'launchctl', args: ['bootout', `gui/${uid}`, file(k)], optional: true });
         steps.push({ remove: file(k) });
       }
     } else {
-      for (const k of KINDS) steps.push({ info: k, cmd: 'launchctl', args: ['print', `gui/${uid}/${LABEL(k)}`], optional: true, show: false });
+      for (const k of ALL) steps.push({ info: k === JOB ? 'procura de vagas' : k, cmd: 'launchctl', args: ['print', `gui/${uid}/${LABEL(k)}`], optional: true, show: false });
     }
     return steps;
   }
@@ -254,6 +293,8 @@ Opções de instalar (horários por omissão entre parênteses):
   --prazo HH:MM    (15:00)   só avisa se houver tarefas com prazo hoje por fazer
   --semana dia-HH:MM (dom-17:00)  revisão semanal (dias: dom seg ter qua qui sex sab)
   --desativar prazo,semana   não instala esses lembretes
+  --vagas HH:MM              também procura vagas novas todos os dias (área Carreira; usa a rede,
+                             por isso só se instala com esta opção)
   --dry                      mostra o que faria, sem mudar nada
 
 Para ver o texto de um lembrete sem notificação: node scripts/rotina.mjs lembrete manha`);
