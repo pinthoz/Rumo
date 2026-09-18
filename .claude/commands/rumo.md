@@ -11,7 +11,7 @@ O Rumo é a página `prototipo/rumo.html`. Cada pessoa tem de ter a **sua** cóp
      - favicon 🧭;
      - descrição: "Painel pessoal: prioridades, foco, finanças, pensar, corretor e escrita.";
    - grava o link devolvido em `config/rumo.json` → `url`;
-   - diz-lhe que a página é privada e que pode fixá-la na barra lateral do claude.ai. Oferece fixar (pin); só fixa se ele disser que sim.
+   - diz ao utilizador que a página é privada e que pode fixá-la na barra lateral do claude.ai. Oferece fixar (pin); só fixa se o utilizador disser que sim.
 3. **Com `url`:**
    - `publicar` → volta a publicar o mesmo ficheiro com `url` (primeiro `read` do artifact, como a ferramenta exige), sem mudar as capabilities;
    - `abrir` → usa a ação `open`;

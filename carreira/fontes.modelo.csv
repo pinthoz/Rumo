@@ -1,0 +1,11 @@
+fonte;alvo;nome;palavras;local
+landing;;;machine learning,data scientist,ai engineer;lisbon,porto,remoto
+remotive;;;machine learning,data scientist;
+himalayas;;;machine learning;portugal
+itjobs;;;machine learning,data scientist;
+# Empresas específicas: tira o cardinal do início e troca o alvo pelo identificador que aparece no link de carreiras da empresa
+# greenhouse;anthropic;Anthropic;research engineer,machine learning;london,remote
+# ashby;elevenlabs;ElevenLabs;machine learning;
+# lever;palantir;Palantir;machine learning,data scientist;
+# remoteok;machine-learning;;engineer;
+# arbeitnow;;;machine learning,data scientist;remoto

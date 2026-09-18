@@ -29,7 +29,7 @@ Tirar uma tarefa do "vou fazer amanhã" com uma conversa curta e prática, sem c
    - **A/B:** divide em passos até o primeiro durar 2 a 5 minutos e ser físico. Propõe fazê-lo **agora**, com um temporizador de 5 minutos.
    - **C:** a tarefa passa a ser "obter X" (quem, onde e como), com um prazo.
    - **D:** propõe apagar ou mover para "Algum dia". Largar é uma decisão válida.
-4. Se ele aceitar, atualiza `tarefas.md`: substitui a tarefa pelos passos, mantendo `~N` só no primeiro passo, ou move-a de secção. Mostra o diff.
+4. Se o utilizador aceitar, atualiza `tarefas.md`: substitui a tarefa pelos passos, mantendo `~N` só no primeiro passo, ou move-a de secção. Mostra o diff.
 5. Pergunta se quer marcar hora (bloco) para o primeiro passo.
 
 ## Output
@@ -37,7 +37,7 @@ No máximo 6 linhas: o bloqueio, o primeiro passo, quando o vai fazer e o que mu
 
 ## Critérios de qualidade
 - O primeiro passo é concreto e cabe em 5 minutos.
-- Não há sermões nem explicações sobre procrastinação, a não ser que ele peça.
+- Não há sermões nem explicações sobre procrastinação, a não ser que o utilizador peça.
 - Nada é apagado sem confirmação.
 
 ## Dependências

@@ -20,17 +20,17 @@ Passar de "tenho mil coisas na cabeça" para "estou a fazer uma coisa durante 25
 ## Processo
 1. **Esvaziar (30 segundos):** "O que te está a passar pela cabeça agora?" Cada coisa que não seja a tarefa escolhida vai para a caixa de entrada com `node scripts/rotina.mjs captura "…"`. Não se discute nenhuma.
 2. **Escolher UMA coisa:**
-   - se ele indicou a tarefa, é essa;
-   - se não, corre `node scripts/rotina.mjs hoje` e propõe a prioridade n.º 1, e ele confirma ou troca.
+   - se o utilizador indicou a tarefa, é essa;
+   - se não, corre `node scripts/rotina.mjs hoje` e propõe a prioridade n.º 1, e o utilizador confirma ou troca.
 3. **Primeiro passo:** uma ação física de 2 a 5 minutos ("abrir o ficheiro X", e não "tratar do relatório").
 4. **Duração:**
    - 25 minutos por omissão;
-   - se ele estiver com muita resistência, 10 minutos;
+   - se o utilizador estiver com muita resistência, 10 minutos;
    - no máximo 50 minutos.
 5. **Preparar (uma linha):** fechar separadores e notificações que não interessam, telemóvel longe, água ao lado.
 6. **Arrancar:** `node scripts/lembretes.mjs temporizador <min> "Fim do bloco: <tarefa>. Pausa de 5 min, depois /feito ou /foco."`.
 7. **Despedida curta:** "Vai. Eu não te interrompo." Não acrescentes mais nada.
-8. **No regresso** (se ele voltar à conversa):
+8. **No regresso** (se o utilizador voltar à conversa):
    - pergunta como correu, numa linha;
    - se acabou, `node scripts/rotina.mjs feito "…"`;
    - se não acabou, propõe outro bloco ou deixar para amanhã (`adiar`);

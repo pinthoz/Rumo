@@ -9,8 +9,12 @@
  *   3. O Claude envia-os (Artifact write_db) e, se correr bem, `confirmar` grava a nova base.
  *
  * Locais: rotina/tarefas.md · financas/movimentos/AAAA-MM.csv · financas/orcamento.csv ·
- *         financas/regras.csv · financas/contas.csv
- * Página: tarefas · fin-index · fin-AAAA-MM · orcamento · regras · contas
+ *         financas/regras.csv · financas/contas.csv · carreira/candidaturas.csv · carreira/vagas.csv
+ *         carreira/cv.md (só o Markdown; o ficheiro original do CV nunca é copiado)
+ * Página: tarefas · fin-index · fin-AAAA-MM · orcamento · regras · contas · carreira · vagas · cv
+ *
+ * `vagas` só vai do computador para a página (a procura corre no computador; a página não tem
+ * internet). Guardar uma vaga na página cria uma candidatura, e essa volta pelo `carreira`.
  *
  * Zero dependências (Node >= 18). Uso: node scripts/sincronizar.mjs help
  */
@@ -19,12 +23,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseTask, formatTask } from './rotina.mjs';
 import { parseCsv, toNumber } from './financas.mjs';
+import { APP_COLS, sameJobKey } from './carreira.mjs';
 
 const ROOT = path.resolve(process.env.ASSISTENTE_ROOT || path.join(path.dirname(fileURLToPath(import.meta.url)), '..'));
 const TASKS_FILE = path.join(ROOT, 'rotina', 'tarefas.md');
 const TASKS_MODEL = path.join(ROOT, 'rotina', 'tarefas.modelo.md');
 const FIN = path.join(ROOT, 'financas');
 const MOV = path.join(FIN, 'movimentos');
+const APPS_FILE = path.join(ROOT, 'carreira', 'candidaturas.csv');
+const SEEN_FILE = path.join(ROOT, 'carreira', 'vagas.csv');
+const CV_FILE = path.join(ROOT, 'carreira', 'cv.md');
 const SYNC = path.join(ROOT, '.sync');
 const BASE = path.join(SYNC, 'base.json');
 const PENDING = path.join(SYNC, 'base.pendente.json');
@@ -253,6 +261,26 @@ export function mergeRules(local, remote, base) {
   };
 }
 
+// ---------------------------------------------------------------- carreira
+
+const APP_FIELDS = APP_COLS.filter((c) => c !== 'id');
+const normApp = (a) => Object.fromEntries(APP_FIELDS.map((k) => [k, String(a[k] ?? '').trim()]));
+export const sameApp = (a, b) => json(normApp(a)) === json(normApp(b));
+// Em conflito: ganha a que mudou de estado mais recentemente; em empate, a da página.
+export const resolveApp = (l, r) => ((l.data || '') > (r.data || '') ? l : r);
+
+/** Vagas recentes ainda não guardadas, para a página mostrar (ela não tem internet para as procurar). */
+export function recentJobs(seen, apps, today, { days = 30, max = 100 } = {}) {
+  const taken = new Set([...apps.map((a) => a.id), ...apps.map(sameJobKey)]);
+  const from = new Date(`${today}T12:00:00Z`);
+  from.setUTCDate(from.getUTCDate() - days);
+  const since = from.toISOString().slice(0, 10);
+  return seen
+    .filter((v) => v.visto && v.visto >= since && !taken.has(v.id) && !taken.has(sameJobKey(v)))
+    .sort((a, b) => b.visto.localeCompare(a.visto))
+    .slice(0, max);
+}
+
 const accId = (nome) => `acc-${hashId(fold(nome))}`;
 const sameAcc = (a, b) => a.tipo === b.tipo && Number(a.saldo) === Number(b.saldo) && a.data === b.data;
 const resolveAcc = (l, r) => ((l.data || '') > (r.data || '') ? l : r);
@@ -384,6 +412,59 @@ export function fuse({ remote, today, base }) {
     report.push('Finanças: sem dados em nenhum dos lados.');
   }
 
+  // --- carreira (só entra quando um dos lados tem dados)
+  const hasLocalApps = fs.existsSync(APPS_FILE);
+  const remoteApps = remote.carreira?.data?.items;
+  const localApps = hasLocalApps ? readCsvTable(APPS_FILE).filter((a) => a.id) : [];
+  nextBase.carreira = base?.carreira || [];
+  if (hasLocalApps || remoteApps) {
+    const m = mergeById(localApps, remoteApps || [], base?.carreira, { same: sameApp, resolve: resolveApp });
+    const apps = m.result.map((a) => ({ id: a.id, ...normApp(a) }));
+    nextBase.carreira = apps.map((a) => ({ ...a }));
+    report.push(`Candidaturas: ${m.stats.fromLocal} do computador, ${m.stats.fromRemote} da página, ${m.stats.deleted} apagadas, ${m.conflicts.length} conflito(s).`);
+    for (const c of m.conflicts) {
+      const a = c.local || c.remote;
+      report.push(`  ⚠ "${a.cargo} · ${a.empresa}": ${c.what} (ficou a versão do ${c.chosen})`);
+    }
+    if (!remoteApps || json(remoteApps.map((a) => ({ id: a.id, ...normApp(a) }))) !== json(apps)) send.carreira = { items: apps };
+    if (!hasLocalApps || json(localApps.map((a) => ({ id: a.id, ...normApp(a) }))) !== json(apps)) {
+      localWrites.push({ csv: APPS_FILE, header: APP_COLS, rows: apps.map((a) => APP_COLS.map((k) => a[k] ?? '')) });
+    }
+  }
+  // --- CV: texto só, e só o Markdown. Ganha a versão mais recente; a outra fica em cópia.
+  const localCv = readIf(CV_FILE);
+  const remoteCv = remote.cv?.data?.markdown ? String(remote.cv.data.markdown) : null;
+  const baseCv = base?.cv?.markdown ?? null;
+  nextBase.cv = base?.cv || null;
+  if (localCv !== null || remoteCv !== null) {
+    const mudouLocal = localCv !== null && localCv !== baseCv;
+    const mudouRemoto = remoteCv !== null && remoteCv !== baseCv;
+    let escolhido = localCv ?? remoteCv;
+    let origem = localCv !== null ? 'do computador' : 'da página';
+    if (mudouRemoto && !mudouLocal) { escolhido = remoteCv; origem = 'da página'; }
+    else if (mudouLocal && !mudouRemoto) { escolhido = localCv; origem = 'do computador'; }
+    else if (mudouLocal && mudouRemoto && localCv !== remoteCv) {
+      // Os dois lados mexeram: fica o da página (normalmente a alteração mais recente) e
+      // o do computador é guardado, para não se perder nada.
+      escolhido = remoteCv;
+      origem = 'da página';
+      localWrites.push({ file: `${CV_FILE}.anterior`, content: localCv });
+      report.push('  ⚠ CV alterado dos dois lados: ficou o da página; o do computador está em carreira/cv.md.anterior.');
+    }
+    nextBase.cv = { markdown: escolhido };
+    if (escolhido !== localCv) localWrites.push({ file: CV_FILE, content: escolhido });
+    if (escolhido !== remoteCv) send.cv = { markdown: escolhido, data: today };
+    if (escolhido !== localCv || escolhido !== remoteCv) report.push(`CV: ficou a versão ${origem}.`);
+  }
+
+  if (fs.existsSync(SEEN_FILE)) {
+    const apps = nextBase.carreira;
+    const jobs = recentJobs(readCsvTable(SEEN_FILE), apps, today);
+    const remoteJobs = remote.vagas?.data?.items;
+    if (!remoteJobs || json(remoteJobs) !== json(jobs)) send.vagas = { items: jobs };
+    report.push(`Vagas por decidir enviadas para a página: ${jobs.length}.`);
+  }
+
   return { report, send, localWrites, nextBase };
 }
 
@@ -435,7 +516,7 @@ function cmdConfirmar() {
 function cmdEstado() {
   if (!fs.existsSync(BASE)) return console.log('Ainda não houve nenhuma sincronização.');
   const b = JSON.parse(fs.readFileSync(BASE, 'utf8'));
-  console.log(`Última sincronização: ${b.when} · ${b.tasks.length} tarefas · ${Object.keys(b.months).length} meses`);
+  console.log(`Última sincronização: ${b.when} · ${b.tasks.length} tarefas · ${Object.keys(b.months).length} meses${b.carreira?.length ? ` · ${b.carreira.length} candidaturas` : ''}`);
   if (fs.existsSync(PENDING)) console.log('Há uma sincronização por confirmar (o envio para a página pode ter falhado). Volta a correr /sincronizar.');
 }
 

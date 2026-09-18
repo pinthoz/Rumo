@@ -138,8 +138,14 @@ test('lembretes: horários, comandos de notificação e planos de instalação p
 
   const win = notifyCommand('Título', 'Corpo "com" <aspas>', 'win32');
   assert.equal(win.cmd, 'powershell.exe');
-  assert.deepEqual(win.env, { ASSIST_TITLE: 'Título', ASSIST_BODY: 'Corpo "com" <aspas>' }, 'texto vai por variáveis de ambiente, sem escapes');
-  assert.match(Buffer.from(win.args.at(-1), 'base64').toString('utf16le'), /ToastNotificationManager/);
+  assert.equal(win.env.ASSIST_TITLE, 'Título');
+  assert.equal(win.env.ASSIST_BODY, 'Corpo "com" <aspas>', 'texto vai por variáveis de ambiente, sem escapes');
+  assert.match(win.env.ASSIST_ICON, /rumo\.ico$/, 'o toast leva o ícone do Rumo');
+  const script = Buffer.from(win.args.at(-1), 'base64').toString('utf16le');
+  assert.match(script, /ToastNotificationManager/);
+  // Sem registar a aplicação, o Windows deita fora o toast sem dar erro nenhum.
+  assert.match(script, /AppUserModelId\\\$app/, 'regista o Rumo como aplicação de notificações');
+  assert.match(script, /\$app = 'Rumo\.Assistente'/);
   const mac = notifyCommand('T', 'B', 'darwin');
   assert.deepEqual([mac.cmd, ...mac.args.slice(-2)], ['osascript', 'T', 'B']);
 
@@ -159,6 +165,33 @@ test('lembretes: horários, comandos de notificação e planos de instalação p
   assert.equal(mPlan.filter((s) => s.cmd === 'launchctl' && s.args[0] === 'bootstrap').length, 2);
   assert.throws(() => plan('instalar', 'linux', schedule), /cron/);
   assert.match(plistFor({ kind: 'manha', hour: 9, minute: 0, weekday: null }, '/a&b/node'), /<string>\/a&amp;b\/node<\/string>/);
+});
+
+test('lembretes: a procura de vagas só se instala quando é pedida, e à parte', () => {
+  assert.ok(!scheduleFrom({}).some((s) => s.kind === 'vagas'), 'nunca por omissão: usa a rede');
+  const withJob = scheduleFrom({ vagas: '08:30', desativar: 'tarde,prazo,semana' });
+  assert.deepEqual(withJob.map((s) => s.kind), ['manha', 'vagas']);
+  assert.throws(() => scheduleFrom({ vagas: 'seg-08:30' }), /inválido/, 'todos os dias, sem dia da semana');
+
+  // Mesmo com a procura pedida primeiro, os lembretes mantêm as posições e o lançador de sempre.
+  const wPlan = plan('instalar', 'win32', [withJob[1], withJob[0]], { LOCALAPPDATA: 'C:\\L' });
+  assert.equal(wPlan[0].write, path.join('C:\\L', 'Assistente', 'lembrete.vbs'));
+  assert.deepEqual(wPlan[1].args.slice(0, 4), ['/Create', '/F', '/TN', 'Assistente\\Lembrete manha']);
+  assert.equal(wPlan[2].write, path.join('C:\\L', 'Assistente', 'vagas.vbs'));
+  assert.match(wPlan[2].content, /sh\.Run """.+node.*"" "".+carreira\.mjs"" procurar --notificar", 0, False/);
+  assert.deepEqual(wPlan[3].args.slice(0, 6), ['/Create', '/F', '/TN', 'Assistente\\Procura de vagas', '/TR', `wscript.exe "${path.join('C:\\L', 'Assistente', 'vagas.vbs')}"`]);
+  assert.deepEqual(wPlan[3].args.slice(-4), ['/SC', 'DAILY', '/ST', '08:30']);
+
+  const removal = plan('remover', 'win32', [], { LOCALAPPDATA: 'C:\\L' });
+  assert.ok(removal.some((s) => s.args?.includes('Assistente\\Procura de vagas')), 'remover também apaga a procura');
+  assert.ok(removal.some((s) => s.remove?.endsWith('vagas.vbs')));
+  assert.ok(plan('estado', 'win32', []).some((s) => s.info === 'procura de vagas'));
+
+  const plist = plistFor(withJob[1], '/usr/bin/node');
+  assert.match(plist, /<string>pt\.assistente\.vagas<\/string>/);
+  assert.match(plist, /carreira\.mjs<\/string><string>procurar<\/string><string>--notificar<\/string>/);
+  assert.doesNotMatch(plist, /<key>Weekday<\/key>/);
+  assert.ok(plan('remover', 'darwin', [], { HOME: '/Users/x' }).some((s) => s.remove?.endsWith('pt.assistente.vagas.plist')));
 });
 
 test('arranque: resumo de uma linha para o hook, sem falhar nunca', () => {

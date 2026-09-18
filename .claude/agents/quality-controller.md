@@ -52,7 +52,7 @@ Leitura e pesquisa, todos os comandos `cwos` de leitura. Escrita em `editorial/q
      - falha em G1, G9 ou G10;
      - um facto **essencial** UNCERTAIN sem decisão do autor.
 
-     Um facto é essencial se uma viragem, a resolução ou a verosimilhança central da cena depender dele. Em caso de dúvida, pergunta ao autor (via orchestrator) e marca ⚠.
+     Um facto é essencial se uma viragem, a resolução ou a verosimilhança central da cena depender desse facto. Em caso de dúvida, pergunta ao autor (via orchestrator) e marca ⚠.
    - **APROVADO COM RESERVAS** se houver ⚠, P1 abertos fora de G1, G9 e G10, ou P2/P3.
    - Caso contrário, **APROVADO**.
 

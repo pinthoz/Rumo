@@ -18,7 +18,7 @@ const agentNames = new Set(agents.map((a) => a.data.name));
 const KNOWN_TOOLS = new Set(['Read', 'Grep', 'Glob', 'Bash', 'Write', 'Edit', 'WebSearch', 'WebFetch']);
 
 test('skills: frontmatter, nome = pasta, secções obrigatórias', () => {
-  assert.equal(skills.length, 29);
+  assert.equal(skills.length, 32);
   for (const s of skills) {
     assert.equal(s.data?.name, s.name, s.file);
     assert.ok(s.data.description?.length > 40, `${s.file}: description curta`);
@@ -63,7 +63,7 @@ test('comandos: sem colisão com skills e referências válidas', () => {
       }
     }
   }
-  const expected = ['hoje', 'feito', 'lembretes', 'foco', 'rumo', 'sincronizar', 'semana', 'travado', 'captura', 'rever', 'gastos', 'financas', 'investir', 'pensar', 'pt', 'en', 'brief', 'architect', 'character', 'world', 'outline', 'scene', 'draft', 'critique', 'edit', 'factcheck', 'continuity', 'polish', 'qa', 'final'];
+  const expected = ['hoje', 'feito', 'lembretes', 'foco', 'rumo', 'sincronizar', 'semana', 'travado', 'captura', 'rever', 'gastos', 'financas', 'investir', 'vaga', 'procurar', 'candidaturas', 'pensar', 'pt', 'en', 'brief', 'architect', 'character', 'world', 'outline', 'scene', 'draft', 'critique', 'edit', 'factcheck', 'continuity', 'polish', 'qa', 'final'];
   for (const e of expected) assert.ok(commands.some((c) => c.name === e), `falta /${e}`);
   for (const e of ['dialogue', 'pacing', 'voice', 'research']) assert.ok(skillNames.has(e), `/${e} deve ser servido pela skill`);
 });
@@ -89,4 +89,16 @@ test('hook de arranque aponta para um comando existente e só mostra mensagem ao
   assert.ok(hook, 'falta o hook SessionStart');
   assert.match(hook.command, /scripts\/rotina\.mjs" arranque$/);
   assert.match(fs.readFileSync(path.join(root, 'scripts', 'rotina.mjs'), 'utf8'), /arranque: cmdArranque/);
+});
+
+test('artifact: JavaScript válido, ids únicos e orientação de carreira presente', () => {
+  const html = fs.readFileSync(path.join(root, 'prototipo', 'rumo.html'), 'utf8');
+  const script = html.match(/<script>([\s\S]*)<\/script>/)?.[1];
+  assert.ok(script, 'falta o script do artifact');
+  assert.doesNotThrow(() => new Function(script), 'JavaScript inválido no artifact');
+  const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(new Set(ids).size, ids.length, 'há ids HTML repetidos');
+  for (const id of ['mobile-view', 'j-next-panel', 'j-next-title', 'j-next-actions', 'j-next-count', 'gmail-panel', 'gmail-prev', 'gmail-next', 'gmail-position', 'cfg-offline', 'cfg-local', 'cfg-files', 'cfg-form']) assert.ok(ids.includes(id), `falta #${id}`);
+  assert.match(html, /Procura de emprego, passo a passo/);
+  assert.match(html, /<label class="mobile-nav" for="mobile-view">/);
 });

@@ -11,8 +11,12 @@
     "hoje": "node scripts/rotina.mjs hoje",
     "resumo": "node scripts/financas.mjs resumo",
     "sincronizar": "node scripts/sincronizar.mjs",
+    "painel": "node scripts/painel.mjs abrir",
+    "atalho": "node scripts/atalho.mjs",
+    "painel:parar": "node scripts/painel.mjs parar",
+    "painel:estado": "node scripts/painel.mjs estado",
     "cwos": "node scripts/cwos.mjs",
-    "test": "node --test scripts/cwos.test.mjs scripts/assistente.test.mjs scripts/sincronizar.test.mjs scripts/system.test.mjs",
+    "test": "node --test scripts/cwos.test.mjs scripts/assistente.test.mjs scripts/carreira.test.mjs scripts/atalho.test.mjs scripts/painel.test.mjs scripts/sincronizar.test.mjs scripts/system.test.mjs",
     "check": "node scripts/cwos.mjs validate && node scripts/cwos.mjs index"
   }
 }

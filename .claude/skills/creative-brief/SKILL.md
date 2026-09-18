@@ -40,7 +40,7 @@ Converter uma ideia vaga num `project/brief.md` que oriente todas as decisões s
 - A pergunta dramática é respondível pelo final da história.
 - Os temas são perguntas e não mensagens moralizantes.
 - "O que a obra NÃO é" existe e é específico.
-- Nenhuma decisão do autor foi tomada em nome dele.
+- Nenhuma decisão do autor foi tomada em nome do utilizador.
 
 ## Exemplo
 Ideia: *"uma farmacêutica que descobre algo no livro de registos do pai morto"*. A pergunta dramática possível seria: *"Ela vai proteger a memória do pai ou a verdade?"* Um tema possível: *"O que devemos aos mortos quando os vivos ainda sofrem as consequências?"*

@@ -17,7 +17,7 @@ Garantir que cada cena é uma unidade de mudança (G5) antes de ser escrita.
 - Falta a estrutura global: usa `story-architecture`.
 
 ## Inputs
-Corre `cwos context <sc-id>` e lê só o que ele lista. Acrescenta a linha da cena em `story/outline.md`.
+Corre `cwos context <sc-id>` e lê só o que o comando lista. Acrescenta a linha da cena em `story/outline.md`.
 
 ## Processo
 1. Se a cena não existir: `cwos add scene sc-NN "Título"`.

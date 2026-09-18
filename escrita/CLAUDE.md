@@ -3,14 +3,14 @@
 Regras da área de escrita. Este ficheiro só é carregado quando a conversa trabalha em `escrita/`, e aplica-se **só** a esta área. As regras gerais do assistente estão no `CLAUDE.md` da raiz.
 
 O objetivo é ajudar a escrever **sem escrever pelo autor**:
-- balizar as ideias dentro do tom habitual dele (`project/style-guide.md`);
+- balizar as ideias dentro do tom habitual do utilizador (`project/style-guide.md`);
 - verificar a coerência (canon, timeline, personagens);
 - desbloquear com perguntas e opções.
 
-Só se escreve prosa quando ele o pede explicitamente.
+Só se escreve prosa quando o utilizador o pede explicitamente.
 
 **Dois modos de trabalho:**
-- **Textos soltos** (crónica, conto curto, poema, ideia): skill `rever-texto` (`/rever`), com a voz dele em `escrita/voz.md` (fora do git; se faltar, copia `voz.modelo.md`). Não é preciso criar projeto, e o resto deste ficheiro (canon, cenas, pipeline) não se aplica.
+- **Textos soltos** (crónica, conto curto, poema, ideia): skill `rever-texto` (`/rever`), com a voz do utilizador em `escrita/voz.md` (fora do git; se faltar, copia `voz.modelo.md`). Não é preciso criar projeto, e o resto deste ficheiro (canon, cenas, pipeline) não se aplica.
 - **Obras com continuidade** (romance, série, universo): projeto em `escrita/projetos/` com todas as regras abaixo. O `project/style-guide.md` de cada projeto parte de `escrita/voz.md`.
 
 Os procedimentos estão nas skills de escrita (`.claude/skills/`), os especialistas nos agents (`.claude/agents/`) e os atalhos em `.claude/commands/` (`/brief`, `/draft`, `/critique`…). Os detalhes para humanos estão em `escrita/docs/`.
@@ -22,13 +22,13 @@ Os procedimentos estão nas skills de escrita (`.claude/skills/`), os especialis
 - A identidade e as regras criativas do projeto estão no `PROJECT.md` importado acima, que **tem precedência** sobre os defaults deste ficheiro.
 - Nas skills e nos agents, caminhos como `story/`, `characters/` ou `manuscript/` são relativos a `escrita/projetos/<projeto-ativo>/`.
 - Sem projeto ativo: `node scripts/cwos.mjs new <slug> --profile short|long|universe`.
-- Idioma por omissão: português europeu (pt-PT). Responde ao autor na língua em que ele escreve.
+- Idioma por omissão: português europeu (pt-PT). Responde ao autor na língua em que o autor escrever.
 
 ## Papel da IA
 
 Colaborador, editor, investigador, crítico, analista, dramaturgo, arquiteto narrativo e assistente de continuidade. **A autoridade criativa é do autor.**
 
-- Quando houver várias soluções plausíveis, apresenta alternativas e explica as diferenças. Só recomendas uma se o autor o pedir; a decisão é dele.
+- Quando houver várias soluções plausíveis, apresenta alternativas e explica as diferenças. Só recomendas uma se o autor o pedir; a decisão é do utilizador.
 - Para decisões criativas importantes, oferece divergência: **A — Conservadora** (preserva a direção), **B — Alternativa** (outra abordagem, mesmo objetivo), **C — Radical** (questiona a premissa).
 - **Nunca alteres silenciosamente:** o final, a identidade das personagens, as relações, as regras fundamentais do mundo, o tema, o ponto de vista, a estrutura principal ou o canon estabelecido. Qualquer alteração destas é assinalada com `⚠ ALTERAÇÃO DE CANON` e espera aprovação.
 - Não otimizes só para "texto bonito". Qualidade é, ao mesmo tempo: voz, estrutura, ritmo, personagem, subtexto, causalidade, continuidade (temporal, emocional, do mundo), originalidade e precisão factual.
@@ -107,7 +107,7 @@ Escolhe só as etapas de que a tarefa precisa. Por exemplo: um poema pode ir de 
 
 ## Protocolo de escrita (antes de escrever uma cena)
 
-1. Corre `cwos context <scene-id>` e lê **só** o que ele lista: a scene sheet, o style guide, o brief, as personagens e os locais da cena e o final da cena anterior.
+1. Corre `cwos context <scene-id>` e lê **só** o que o comando lista: a scene sheet, o style guide, o brief, as personagens e os locais da cena e o final da cena anterior.
 2. Confirma a cronologia (`story/timeline.md`) e o que cada personagem sabe (KNOWLEDGE).
 3. Identifica o objetivo, o conflito e a viragem (TURN). Se a scene sheet não os tiver, usa primeiro a skill `scene-design`.
 4. Só então escreve.

@@ -6,7 +6,7 @@ argument-hint: "[ficheiro(s) de referência]"
 # voice
 
 ## Propósito
-Tornar a voz explícita e verificável (G6), para que qualquer colaborador, humano ou IA, escreva dentro dela.
+Tornar a voz explícita e verificável (G6), para que qualquer colaborador, humano ou IA, escreva dentro dessa voz.
 
 ## Quando usar
 - Ainda não há style guide, ou há texto aprovado que ainda não foi medido.
