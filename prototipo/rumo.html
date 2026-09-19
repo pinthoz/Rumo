@@ -1255,6 +1255,32 @@ Cumprimentos</textarea>
     </details>
   </section>
 
+  <!-- ============ CONVERSAR ============ -->
+  <section id="view-conversar" class="section" role="tabpanel" aria-labelledby="tab-conversar" hidden>
+    <div class="view-head">
+      <h2>Falar com o Claude</h2>
+      <p class="muted">Conversa normal. Escreve <span class="num">/</span> para escolher o tema: o Rumo junta as regras dessa área e os teus dados dela.</p>
+    </div>
+    <div class="panel">
+      <div class="row between">
+        <span class="row" id="talk-topic-row">
+          <span class="chip today" id="talk-topic">sem tema</span>
+          <span class="note" id="talk-topic-note">Sem tema, é uma conversa normal.</span>
+        </span>
+        <button class="btn small ghost" id="talk-new" type="button">Nova conversa</button>
+      </div>
+      <div class="chat" id="talk-chat" aria-live="polite"></div>
+      <div class="chips" id="talk-menu" hidden role="listbox" aria-label="Temas"></div>
+      <label class="sr" for="talk-in">A tua mensagem</label>
+      <textarea id="talk-in" placeholder="Escreve aqui. Começa por / para escolher um tema (ex.: /financas)."></textarea>
+      <div class="row">
+        <button class="btn primary" id="talk-go">Enviar</button>
+        <button class="btn" id="talk-stop" hidden>Parar</button>
+        <span class="note" id="talk-note"></span>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ CONFIGURAR ============ -->
   <section id="view-config" class="section" role="tabpanel" aria-labelledby="tab-config" hidden>
     <div class="view-head">
@@ -1353,19 +1379,22 @@ Cumprimentos</textarea>
 
   // =========================================================== separadores
   // `area` escolhe a cor (ver [data-area] no CSS).
+  // A barra segue o dia: primeiro o que se faz agora, depois cada área, e no fim a conversa
+  // livre e as definições.
   const VIEWS = [
-    { area: "rotina", group: "Rotina", id: "hoje", name: "Hoje", hint: "As 3 prioridades" },
+    { area: "rotina", group: "O teu dia", id: "hoje", name: "Hoje", hint: "As 3 prioridades" },
     { area: "rotina", id: "foco", name: "Foco", hint: "Um bloco de cada vez", dot: true },
     { area: "rotina", id: "semana", name: "Semana", hint: "Revisão de 15 minutos" },
-    { area: "financas", group: "Finanças", id: "mes", name: "Mês", hint: "Quanto ainda podes gastar" },
+    { area: "financas", group: "Dinheiro", id: "mes", name: "Mês", hint: "Quanto ainda podes gastar" },
     { area: "financas", id: "contas", name: "Património", hint: "Contas e objetivos" },
     { area: "financas", id: "investir", name: "Investir", hint: "Perceber antes de decidir" },
-    { area: "carreira", group: "Carreira", id: "vagas", name: "Vagas", hint: "O que a procura encontrou" },
-    { area: "carreira", id: "candidaturas", name: "Candidaturas", hint: "Em que pé está cada vaga" },
-    { area: "ideias", group: "Ideias e escrita", id: "pensar", name: "Ideias", hint: "Capturar e desenvolver" },
+    { area: "carreira", group: "Emprego", id: "candidaturas", name: "Candidaturas", hint: "Preparar, procurar, decidir" },
+    { area: "carreira", id: "vagas", name: "Vagas", hint: "O que a procura encontrou" },
+    { area: "ideias", group: "Escrever e pensar", id: "pensar", name: "Ideias", hint: "Capturar e desenvolver" },
     { area: "ideias", id: "corretor", name: "Corretor", hint: "Português e inglês" },
     { area: "ideias", id: "escrita", name: "Escrita", hint: "Coerência e tom" },
-    { area: "config", group: "Rumo", id: "config", name: "Configurar", hint: "Dados e preferências" },
+    { area: "config", group: "Rumo", id: "conversar", name: "Conversar", hint: "Falar com o Claude" },
+    { area: "config", id: "config", name: "Configurar", hint: "Dados e preferências" },
   ];
   $("tabs").replaceChildren(...VIEWS.flatMap((v) => [
     v.group ? h("p", { class: "label group-label", role: "presentation", "data-area": v.area, text: v.group }) : null,
@@ -1465,6 +1494,20 @@ Cumprimentos</textarea>
     try { localStorage.setItem(GMAIL_CLOSED_KEY, JSON.stringify([...gmailState.closed])); } catch { /* só memória */ }
   }
 
+  // ===========================================================================
+  // DE ONDE VÊM OS DADOS (a mesma página corre em dois sítios)
+  //
+  //   claude.ai          → documentos privados da página (db) + conectores (Gmail, Calendar)
+  //   painel local       → ficheiros do computador, pela API em 127.0.0.1 (/api/...)
+  //   fora dos dois      → exemplos, e o que estiver no localStorage deste navegador
+  //
+  // Quando há mais do que uma origem para o mesmo dado, manda a mais fresca, por esta ordem:
+  //   1. conector (calendário, Gmail): é o próprio serviço, em direto;
+  //   2. ficheiro local (agenda.json, emails.json, cv.md, vagas.csv): escrito pelo /hoje ou
+  //      pela procura, no computador;
+  //   3. documento da página (db): o que lá ficou da última sincronização.
+  // Quem desce de nível nunca escreve por cima de quem está acima (ver `agendaState.source`).
+  // ===========================================================================
   // =========================================================== armazenamento
   let db = null, uid = null;
   const LOCAL_KEY = "rumo-local-v1";
@@ -2864,6 +2907,147 @@ Cumprimentos</textarea>
   });
   $("chat-new").addEventListener("click", () => { if (!turns.length || confirm("Começar um tema novo? A conversa atual desaparece (os resumos guardados ficam).")) { turns = []; renderChat(); } });
 
+  // =========================================================== CONVERSAR
+  /**
+   * Conversa livre com o Claude. Cada tema (escolhido com "/") traz as regras da área e um
+   * resumo dos dados dela — só os que já estão nesta página, nunca inventados.
+   */
+  const TEMAS = [
+    {
+      cmd: "/hoje", nome: "Rotina", area: "rotina",
+      regras: "PAPEL: ajudas a organizar o dia. No máximo 3 prioridades, e cada uma com um primeiro passo de 2 a 5 minutos, físico e concreto. Sem sermões sobre procrastinação.",
+      dados: () => {
+        const top = ranked().slice(0, 5).map((t) => `- ${t.t}${t.due ? ` (prazo ${t.due})` : ""}${t.adiada ? ` [adiada ${t.adiada}x]` : ""}`);
+        const inbox = state.tasks.filter((t) => t.inbox && !t.feita).length;
+        return [state.tasksExample ? "ATENÇÃO: são tarefas de exemplo, não dele." : "", `Tarefas abertas:\n${top.join("\n") || "(nenhuma)"}`, `Caixa de entrada: ${inbox}`].filter(Boolean).join("\n");
+      },
+    },
+    {
+      cmd: "/financas", nome: "Finanças", area: "financas",
+      regras: "PAPEL: ajudas a perceber os números que estão aqui. Não estimes valores que não existam nos dados. Números do mundo (taxas, impostos) não tens: marca [Não verificado] e diz onde confirmar. Não dás ordens de investimento.",
+      dados: () => {
+        const s = summary(state.month);
+        return [
+          state.finExample ? "ATENÇÃO: valores de exemplo, não dele." : "",
+          `Mês ${state.month}: receitas ${money(s.income)}, despesas ${money(s.spent)}.`,
+          s.limitSum > 0 ? `Orçamento: ${money(s.left)} por gastar de ${money(s.limitSum)}.` : "Sem limites definidos.",
+          s.cats.slice(0, 6).map((c) => `- ${c.cat}: ${money(c.spent)}${c.limit ? ` de ${money(c.limit)}` : ""}`).join("\n"),
+          state.goals ? `Objetivos dele: ${state.goals.slice(0, 800)}` : "",
+        ].filter(Boolean).join("\n");
+      },
+    },
+    {
+      cmd: "/emprego", nome: "Carreira", area: "carreira",
+      regras: "PAPEL: ajudas na procura de emprego. O CV é a única fonte sobre a experiência dele: não inventes experiências nem competências. Não te candidatas a nada: preparas, ele envia.",
+      dados: () => [
+        state.cv?.markdown ? `CV:\n${state.cv.markdown.slice(0, 6000)}` : "Sem CV no Rumo.",
+        state.cargos?.length ? `Cargos sugeridos: ${state.cargos.map((c) => c.titulo).join(", ")}` : "",
+        `Candidaturas em curso: ${state.jobs.filter((j) => J_ACTIVE.includes(j.estado) && !state.jobsExample).length}`,
+        `Vagas por decidir: ${vagasAbertas().length}`,
+      ].filter(Boolean).join("\n"),
+    },
+    {
+      cmd: "/pensar", nome: "Pensar", area: "ideias",
+      regras: PENSAR_RULES,
+      dados: () => (state.notes?.length ? `Resumos guardados: ${state.notes.slice(0, 5).map((n) => n.tema).join("; ")}` : ""),
+    },
+    {
+      cmd: "/lingua", nome: "Língua", area: "ideias",
+      regras: "PAPEL: corriges e melhoras textos em português europeu (AO90) ou inglês. Corriges sem mudar a voz nem o sentido, e explicas cada correção numa linha, com a regra.",
+      dados: () => (state.errors?.length ? `Erros frequentes dele: ${state.errors.slice(0, 10).map((e) => `${e.de} → ${e.para}`).join("; ")}` : ""),
+    },
+    {
+      cmd: "/escrita", nome: "Escrita", area: "ideias",
+      regras: "PAPEL: ajudas a escrever sem escrever pela pessoa. Apontas incoerências e desvios de tom, e fazes perguntas que desbloqueiam. Só escreves uma frase de exemplo se ela pedir, marcada como [Sugestão].",
+      dados: () => (state.voice?.perfil ? `Perfil de voz dele${state.voice.confirmado ? " (confirmado)" : " (por confirmar)"}:\n${state.voice.perfil.slice(0, 2000)}` : "Sem perfil de voz."),
+    },
+  ];
+  let temaAtual = null;
+  let conversa = [];
+
+  function renderConversar() {
+    const box = $("talk-chat");
+    box.replaceChildren(...(conversa.length
+      ? conversa.map((t) => h("div", { class: `bubble ${t.role === "user" ? "me" : "ai"}`, text: t.content }))
+      : [h("p", { class: "muted", text: "Escreve uma mensagem. Com / escolhes o tema e o Rumo junta os teus dados dessa área." })]));
+    box.scrollTop = box.scrollHeight;
+    $("talk-topic").textContent = temaAtual ? temaAtual.nome : "sem tema";
+    $("talk-topic-note").textContent = temaAtual
+      ? `Usa as regras e os dados de ${temaAtual.nome}. Escreve /outro para mudar.`
+      : "Sem tema, é uma conversa normal.";
+    $("shell").dataset.area = temaAtual && currentView === "conversar" ? temaAtual.area : $("shell").dataset.area;
+  }
+  function renderMenuTemas(filtro = "") {
+    const f = fold(filtro.replace("/", ""));
+    const lista = TEMAS.filter((t) => !f || fold(t.cmd).includes(f) || fold(t.nome).includes(f));
+    $("talk-menu").hidden = !lista.length;
+    $("talk-menu").replaceChildren(...lista.map((t) => h("button", {
+      class: "chip-pick", type: "button", role: "option", text: `${t.cmd} · ${t.nome}`,
+      onclick: () => escolherTema(t),
+    })));
+  }
+  function escolherTema(tema) {
+    temaAtual = tema;
+    $("talk-menu").hidden = true;
+    // Tira o "/..." que ele estava a escrever: o tema passa a ser a etiqueta em cima.
+    $("talk-in").value = $("talk-in").value.replace(/^\s*\/\S*\s*/, "");
+    $("talk-in").focus();
+    renderConversar();
+  }
+  $("talk-in").addEventListener("input", (e) => {
+    const v = e.target.value;
+    if (v.startsWith("/")) renderMenuTemas(v.split(/\s/)[0]);
+    else $("talk-menu").hidden = true;
+  });
+  $("talk-in").addEventListener("keydown", (e) => {
+    if (e.key === "Escape") $("talk-menu").hidden = true;
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) $("talk-go").click();
+  });
+  $("talk-new").addEventListener("click", () => {
+    if (conversa.length && !confirm("Começar uma conversa nova? A atual desaparece.")) return;
+    conversa = [];
+    temaAtual = null;
+    renderConversar();
+  });
+  $("talk-go").addEventListener("click", () => {
+    const texto = $("talk-in").value.trim();
+    if (!texto) return;
+    // "/tema" escrito à mão, sem passar pelo menu.
+    const atalho = TEMAS.find((t) => texto.toLowerCase().startsWith(`${t.cmd} `) || texto.toLowerCase() === t.cmd);
+    if (atalho) {
+      temaAtual = atalho;
+      const resto = texto.slice(atalho.cmd.length).trim();
+      $("talk-in").value = resto;
+      renderConversar();
+      if (!resto) return;
+    }
+    const mensagem = $("talk-in").value.trim();
+    if (!mensagem) return;
+    conversa.push({ role: "user", content: mensagem.slice(0, 4000) });
+    $("talk-in").value = "";
+    $("talk-menu").hidden = true;
+    renderConversar();
+    const bolha = h("div", { class: "bubble ai", text: "…" });
+    runAI({ go: $("talk-go"), stop: $("talk-stop"), note: $("talk-note"), work: async (signal) => {
+      const dados = temaAtual?.dados ? temaAtual.dados() : "";
+      const preambulo = [
+        SAFE,
+        temaAtual ? temaAtual.regras : "PAPEL: assistente pessoal. Respostas curtas e práticas; se não souberes, diz que não sabes.",
+        temaAtual && dados ? `DADOS DELE NESTA ÁREA (usa-os; não inventes outros):\n${dados}` : "",
+      ].filter(Boolean).join("\n\n");
+      $("talk-chat").append(bolha);
+      $("talk-chat").scrollTop = $("talk-chat").scrollHeight;
+      try {
+        const { text } = await sampleFn([{ role: "user", content: preambulo }, ...conversa.slice(-12)],
+          opts({ signal, cache: false, onText: ({ text }) => { bolha.textContent = text; $("talk-chat").scrollTop = $("talk-chat").scrollHeight; } }));
+        conversa.push({ role: "assistant", content: text });
+      } catch (e) {
+        if (e?.text) conversa.push({ role: "assistant", content: `${e.text}\n\n(interrompido)` });
+        throw e;
+      } finally { renderConversar(); }
+    } });
+  });
+
   // =========================================================== CORRETOR
   let lang = "pt", reg = "profissional";
   segGroup("lang-seg", (v) => { lang = v; });
@@ -3760,11 +3944,9 @@ Cumprimentos</textarea>
         method: "POST",
         body: JSON.stringify({ prompt: pedido, web: true, modelo: MODELOS.find((m) => m.id === modelo)?.cli || "" }),
       });
-      const texto = String(data.text || "").replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
       let lista = [];
       try {
-        const inicio = texto.indexOf("{");
-        lista = JSON.parse(texto.slice(inicio, texto.lastIndexOf("}") + 1)).vagas || [];
+        lista = extrairJson(data.text).vagas || [];
       } catch { return "A resposta não veio no formato esperado. Tenta outra vez."; }
       const novas = lista
         .filter((v) => v && v.cargo && v.empresa)
@@ -3948,6 +4130,16 @@ Cumprimentos</textarea>
    * Ponte para o Claude Code deste computador, com a mesma forma do `sample` do claude.ai
    * (função que devolve {text}, mais `.json()`), para o resto da página não notar a diferença.
    */
+  /** Tira o JSON de uma resposta, mesmo com blocos de código ou texto à volta. */
+  function extrairJson(texto) {
+    const limpo = String(texto || "").replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
+    try { return JSON.parse(limpo); } catch { /* tenta o primeiro objeto */ }
+    const inicio = limpo.indexOf("{");
+    const fim = limpo.lastIndexOf("}");
+    if (inicio === -1 || fim <= inicio) throw Object.assign(new Error("resposta sem JSON"), { code: "invalid_json" });
+    return JSON.parse(limpo.slice(inicio, fim + 1));
+  }
+
   function localSample() {
     const textoDe = (input) => (typeof input === "string" ? input
       : input.map((t) => (t.role === "assistant" ? `Assistente: ${t.content}` : `Pessoa: ${t.content}`)).join("\n\n"));
@@ -3963,13 +4155,17 @@ Cumprimentos</textarea>
       return { text, truncated: false };
     };
     fn.json = async (input, options = {}) => {
-      const { text } = await fn(`${textoDe(input)}\n\nResponde só com o JSON pedido, sem texto à volta e sem blocos de código.`, options);
-      const limpo = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
-      try { return JSON.parse(limpo); } catch { /* tenta o primeiro objeto */ }
-      const inicio = limpo.indexOf("{");
-      const fim = limpo.lastIndexOf("}");
-      if (inicio === -1 || fim <= inicio) throw Object.assign(new Error("resposta sem JSON"), { code: "invalid_json" });
-      return JSON.parse(limpo.slice(inicio, fim + 1));
+      const pedido = `${textoDe(input)}\n\nResponde só com o JSON pedido, sem texto à volta e sem blocos de código.`;
+      const { text } = await fn(pedido, options);
+      try { return extrairJson(text); } catch { /* segue para a segunda tentativa */ }
+      // Uma segunda tentativa: pede-se só o JSON, a partir do que veio. Resolve a maioria
+      // dos casos (texto antes, explicações no fim) sem repetir o trabalho todo.
+      const segunda = await fn([
+        "Converte isto no JSON pedido. Só o JSON, sem texto à volta, sem blocos de código.",
+        "Se não houver dados, devolve o JSON com listas vazias.",
+        "", "PEDIDO ORIGINAL:", pedido.slice(0, 2000), "", "RESPOSTA A CONVERTER:", text.slice(0, 8000),
+      ].join("\n"), { ...options, onText: undefined });
+      return extrairJson(segunda.text);
     };
     fn.limits = async () => ({ images: false });
     return fn;
@@ -4187,7 +4383,7 @@ Cumprimentos</textarea>
 
   // =========================================================== arranque
   function renderView(name) {
-    ({ hoje: renderHoje, foco: renderFoco, semana: renderSemana, mes: renderMes, contas: renderContas, investir: () => {}, vagas: renderVagas, candidaturas: renderCandidaturas, pensar: renderPensar, corretor: renderCorretor, escrita: renderEscrita, config: () => {} })[name]?.();
+    ({ hoje: renderHoje, foco: renderFoco, semana: renderSemana, mes: renderMes, contas: renderContas, investir: () => {}, vagas: renderVagas, candidaturas: renderCandidaturas, pensar: renderPensar, corretor: renderCorretor, escrita: renderEscrita, conversar: renderConversar, config: () => {} })[name]?.();
   }
   function renderAll() {
     renderHoje();

@@ -42,13 +42,21 @@ npm test
 
 Then, in Claude Code: `/hoje`.
 
-For a local visual interface, run `npm run atalho` once on Windows: it draws the Rumo compass into `prototipo/rumo.ico` and creates a **`Rumo`** shortcut in the project folder that opens the dashboard with no console window. Elsewhere, run `npm run painel`. It opens the same dashboard in the browser, connected only to the personal files in this folder. The server runs in the background, so no terminal window has to stay open: `npm run painel:estado` says whether it is running and `npm run painel:parar` stops it. The AI-backed tabs work there too: the local server asks the Claude Code CLI installed on the machine (`claude -p`, restricted mode), so no API key is needed. The **Configurar** area edits routine, career profile, CV, financial goals, glossary, frequent errors and writing voice without needing to find or open Markdown files.
+For a local visual interface, run `npm run atalho` once on Windows: it draws the Rumo compass into `prototipo/rumo.ico` and creates a **`Rumo`** shortcut in the project folder that opens the dashboard with no console window. Elsewhere, run `npm run painel`. It opens the same dashboard in the browser, connected only to the personal files in this folder. The server runs in the background, so no terminal window has to stay open: `npm run painel:estado` says whether it is running and `npm run painel:parar` stops it. The **Configurar** area edits routine, career profile, CV, financial goals, glossary, frequent errors and writing voice without needing to find or open Markdown files.
+
+The local panel does what the published page cannot, because it runs on your machine:
+
+- **Claude without an API key** — the AI-backed tabs ask the Claude Code CLI already installed (`claude -p`, restricted mode), using your subscription.
+- **Job search that actually searches** — one click searches public postings (never logging in to LinkedIn) and appends what it finds to `carreira/vagas.csv`, so it is still there next time.
+- **Writes into the repo** — the CV you upload (a PDF is read in the browser; only the text leaves it) is saved to `carreira/cv.md`, with a backup in `.sync/backups/`.
+- **Usage limits** — a small badge, bottom right, showing how much of your Claude quota is left.
 
 ## Rumo dashboard
 
 A claude.ai page with the same areas, for use in the browser or on a phone:
 - `/rumo` publishes it to your own account;
-- `/sincronizar` syncs it both ways with the local files.
+- `/sincronizar` syncs it both ways with the local files (tasks, money, applications and the CV — only the Markdown, never the original file);
+- with your Gmail and Google Calendar connectors, the Hoje and Semana tabs show the emails that need an answer and the week's events, read-only.
 
 ## Architecture
 
