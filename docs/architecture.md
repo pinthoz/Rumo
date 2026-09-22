@@ -112,8 +112,9 @@ All scripts are ES modules with no dependencies (Node ≥ 18). Each one works bo
 | `lembretes.mjs` | OS notifications (PowerShell toast on Windows, `osascript` on macOS, `notify-send` on Linux); installs the scheduled reminders with `schtasks` (through a `.vbs` launcher, so no window opens) or `launchd`; focus timer (a detached process) |
 | `financas.mjs` | import bank CSVs (detects the separator, preamble lines, debit/credit columns; skips duplicates); `categorizar` from the rules file; `resumo` (budget, what's left per day, trends); `recorrentes`; `patrimonio` (flags old balances) |
 | `carreira.mjs` | job search: `procurar` (sources from `fontes.csv`, with optional one-off word/location filters), `novas`, `guardar`, `adicionar`, `mudar`, `lista`, `resumo`, `agenda` (see §5) |
-| `painel.mjs` | serves the dashboard on `127.0.0.1`, opens it in the browser and exposes token-protected read/write access only to the configured personal Markdown files |
+| `painel.mjs` | runs the local dashboard: `abrir` (starts it in the background with no window and opens the browser), `parar`, `estado`, `servir`. Serves the page on `127.0.0.1` and exposes token-protected endpoints for the personal files, the day's emails and agenda, the saved postings, the Claude bridge and the usage limits (see §6) |
 | `sincronizar.mjs` | three-way merge between local files and the dashboard (see §7) |
+| `atalho.mjs` | draws the compass logo into `prototipo/rumo.ico` and creates the Windows `Rumo` shortcut, which opens the panel with no console window |
 | `cwos.mjs` | Escrita: `new`/`use`/`add` projects and entities, `validate`, `index`, `deps`, `context`, `wc`, `mentions`, `style`, `cliches`, `canon-diff` |
 
 **Startup hook:** when Claude Code opens, `.claude/settings.json` runs `rotina.mjs arranque`. It prints the day's priorities as a `systemMessage`, which the user sees and the model does not. It never fails, even when there is no task file.
@@ -142,16 +143,40 @@ Each line is queried **at most once every 20 hours** (`carreira/.procura.json` h
 
 **Scheduled search** is off by default, because it is the only scheduled task that uses the network. `lembretes.mjs instalar --vagas 08:30` adds it, with its own launcher so the existing reminders are untouched.
 
-## 6. Rumo dashboard (claude.ai)
+## 6. Rumo dashboard: one page, two homes
 
-`prototipo/rumo.html` is a single self-contained page (HTML, CSS and JS, no build step). It has tabs for Hoje, Foco, Semana, Mês, Contas, Investir, Candidaturas, Pensar, Corretor and Escrita.
+The dashboard is three files in `prototipo/`, with no build step: `rumo.html` (structure), `rumo.css` (styles) and `rumo.js` (logic). The page has no inline scripts and no `on…=` attributes, so the local panel serves it under a Content-Security-Policy that allows scripts only from its own files (plus cdnjs, for the PDF reader); `system.test.mjs` keeps it that way. It has tabs for Hoje, Foco, Semana, Mês, Património, Investir, Vagas, Candidaturas, Pensar, Corretor, Escrita and Configurar. The same file runs in two places, and adapts to what each one can do:
+
+| | claude.ai (published artifact) | local panel (`painel.mjs`) |
+|---|---|---|
+| **data** | the page's private documents (`db`) | the repository's own files, over `127.0.0.1` |
+| **Claude** | the `sample` capability | `claude -p --restricted` on this machine, through `/api/claude`; one process is kept started and waiting, and the answer streams back as NDJSON |
+| **internet** | none | yes: job search runs with `WebSearch`/`WebFetch` |
+| **connectors** | Gmail and Google Calendar, through `mcp` | none |
+| **files** | `downloads` (the viewer saves them) | written straight into the repo (`carreira/cv.md`, `carreira/vagas.csv`) |
+| **usage limits** | not shown | live, bottom-right (see below) |
+
+**Which source wins.** Several features have more than one source, so the page picks the freshest, in this order: the connector (live), then the local file written by `/hoje` or by the search, then the page's stored document. A lower level never overwrites a higher one — that is what `agendaState.source` tracks.
+
+**The local panel's endpoints** (all requiring the token in `X-Rumo-Token`, all bound to `127.0.0.1`):
+
+| endpoint | what it does |
+|---|---|
+| `GET /api/files`, `GET|PUT /api/files/<id>` | reads and writes the allow-listed personal files, atomically and with a backup in `.sync/backups/` |
+| `GET /api/emails`, `GET /api/agenda` | the day's actionable emails and the week's events, as `/hoje` left them (metadata only: no message bodies, no guests) |
+| `GET|POST /api/vagas` | reads and appends `carreira/vagas.csv`, deduplicating by id and by `empresa\|cargo` |
+| `POST /api/claude` | asks the local Claude Code CLI; restricted by default, `web: true` opens only `WebSearch`/`WebFetch` for job search; the model alias is checked against an allow-list |
+| `GET|POST /api/limites` | usage limits, read live with the credential already on the machine, falling back to the copy Claude Code caches. The credential never reaches the browser |
+
+**Career flow.** Candidaturas is a four-step flow — Preparar (CV), Encontrar (search), Decidir (postings), Acompanhar (applications) — and each section belongs to exactly one step, which `system.test.mjs` enforces. After the CV is saved, Claude suggests the roles it qualifies for; picking one writes it into the search box.
 
 - **Publishing:** `/rumo` publishes the page to the account of whoever runs the command, and stores that person's link in `config/rumo.json`, which is not in git.
 - **Runtime capabilities:**
   - `db`: per-user documents;
   - `user`: identifies the viewer;
-  - `sample`: asks Claude from inside the page, used by the proofreader, Pensar and Escrita;
-  - `downloads`: exports files.
+  - `sample`: asks Claude from inside the page (proofreader, Pensar, Escrita, CV, application drafts);
+  - `downloads`: exports files;
+  - `mcp`: the viewer's Gmail (`search_threads`) and Google Calendar (`list_events`) connectors, read-only. Nothing is sent, archived or marked as read, and no event is created.
 - **Storage:** documents live under `data/users/<id>/`, so each viewer's data is private:
 
   | document | content |
@@ -161,9 +186,12 @@ Each line is queried **at most once every 20 hours** (`carreira/.procura.json` h
   | `orcamento`, `regras`, `contas` | budget, categorisation rules, accounts |
   | `objetivos`, `revisoes` | goals; weekly reviews |
   | `pensar`, `lingua`, `voz`, `foco` | notes; frequent mistakes; writing voice; focus blocks |
-  | `carreira`, `vagas` | applications; postings found on the computer, waiting to be kept or ignored |
+  | `carreira`, `vagas`, `vagas-fora` | applications; postings waiting to be kept or ignored; the ones discarded by hand |
+  | `cv`, `cargos` | the CV in Markdown; the roles Claude read out of it |
+  | `emails`, `agenda` | what `/hoje` found: actionable emails and this week's events |
 
   Writes are queued per document (latest value wins) and changes arrive live through snapshots.
+- **Reading a PDF CV:** the panel loads pdf.js from cdnjs only when the viewer picks a PDF, extracts the text in the browser and sends just that text to Claude. The file itself is never uploaded. The local panel allows that one origin in its Content-Security-Policy, and a test guards it.
 - **Fallbacks:**
   - Outside Claude, or if access is revoked, the page switches to **local mode**: data stays in `localStorage` in that browser.
   - The page has no internet access. Questions that need current data go to a normal Claude conversation through the "Pesquisar no Claude" button. [conector-pesquisa.md](conector-pesquisa.md) discusses adding a search connector.
@@ -179,7 +207,7 @@ sequenceDiagram
   C->>P: read_db list data/users/me (+ versions)
   P-->>C: one JSON per document
   C->>S: fundir --remoto <dir> --saida <dir>
-  S->>F: read tarefas.md, movimentos, orcamento, regras, contas, candidaturas
+  S->>F: read tarefas.md, movimentos, orcamento, regras, contas, candidaturas, cv.md
   S->>S: 3-way merge with .sync/base.json
   S->>F: write merged local files
   S-->>C: plano.json + documents to send (base.pendente.json saved)
@@ -203,7 +231,7 @@ sequenceDiagram
 
 ## 8. Tests
 
-`npm test` runs Node's built-in test runner on five files:
+`npm test` runs Node's built-in test runner on nine files:
 
 | file | covers |
 |---|---|
@@ -211,7 +239,11 @@ sequenceDiagram
 | `carreira.test.mjs` | reading each job source (real response shapes, trimmed), search URLs and filters, cross-source deduplication, state changes and follow-up dates, response rate, and the whole CLI — with the sources read from files, never the network |
 | `sincronizar.test.mjs` | converting tasks between Markdown and JSON, three-way merge, transaction keys, first sync, confirming, deleting on a later sync, applications both ways |
 | `cwos.test.mjs` | front matter, validation, timeline, dependencies, mentions, style metrics, `canon-diff` |
-| `system.test.mjs` | consistency of the instruction layer: skill and agent front matter, required sections, critic agents cannot edit, no command/skill name clashes, every referenced skill, agent and template exists, the startup hook is valid |
+| `painel.test.mjs` | the local panel: token-protected API, reading the personal files atomically with backups, the emails and agenda it serves (metadata only), saving postings to `vagas.csv` without duplicates, the background start/stop cycle, the Content-Security-Policy that allows only the PDF reader, and the usage limits never leaking account data |
+| `atalho.test.mjs` | the generated logo, PNG and ICO structure |
+| `conversar.test.mjs` | the chat answer formatter (headings, lists, code, emphasis, and only `https` links), run on a minimal DOM |
+| `navegador.test.mjs` | the real dashboard in headless Chrome or Edge, driven through the DevTools protocol with Node's built-in WebSocket: it boots without errors under the strict policy, every tab opens its section, arrow keys switch tabs, the `/` menu and career steps work, refresh buttons answer, and a deliberate error proves the error detector listens. Skipped when no browser is installed |
+| `system.test.mjs` | consistency of the instruction layer: skill and agent front matter, required sections, critic agents cannot edit, no command/skill name clashes, every referenced skill, agent and template exists, the startup hook is valid. It also checks the dashboard statically: valid JavaScript, unique ids, every id the script looks up exists, every tab shortcut points at a real tab, and each career step shows sections that exist and belong to it alone |
 
 ## 9. Design decisions
 
@@ -225,3 +257,5 @@ sequenceDiagram
 | Dashboard as a claude.ai page | usable on a phone with the user's own account, private by default, with no hosting to run |
 | Three-way merge in a script, Claude only as transport | deterministic, testable and safe against lost edits |
 | Job boards through public APIs, once a day; LinkedIn only when asked | respects what each source asks for, and never risks the user's LinkedIn account for a background scrape |
+| The local panel talks to the Claude Code CLI instead of an API key | it uses the subscription the user already has, costs nothing extra, and keeps the credential out of the browser |
+| The panel writes into the repository (CV, postings) instead of offering downloads | the data belongs in the files the rest of the system reads; a download would leave it in the browser |

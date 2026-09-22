@@ -28,6 +28,31 @@ export const FILE_DEFS = [
 ];
 const BY_ID = new Map(FILE_DEFS.map((x) => [x.id, x]));
 
+/** Quantas cópias de segurança se guardam por ficheiro (as mais antigas são apagadas). */
+export const COPIAS_POR_FICHEIRO = 20;
+
+/**
+ * Escreve um ficheiro pessoal com segurança: guarda antes a versão anterior em
+ * .sync/backups/<pasta>/, escreve para um temporário e só depois troca, para nunca ficar um
+ * ficheiro a meio. As cópias têm limite, senão cada gravação no painel as fazia crescer sem fim.
+ */
+export function escreverComCopia(root, alvo, conteudo, pastaCopia, extensao = path.extname(alvo) || '.txt') {
+  fs.mkdirSync(path.dirname(alvo), { recursive: true });
+  if (fs.existsSync(alvo)) {
+    const pasta = path.join(root, '.sync', 'backups', pastaCopia);
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    fs.mkdirSync(pasta, { recursive: true });
+    fs.copyFileSync(alvo, path.join(pasta, `${stamp}${extensao}`));
+    const copias = fs.readdirSync(pasta).filter((f) => f.endsWith(extensao)).sort();
+    for (const velha of copias.slice(0, Math.max(0, copias.length - COPIAS_POR_FICHEIRO))) {
+      fs.rmSync(path.join(pasta, velha), { force: true });
+    }
+  }
+  const temp = `${alvo}.${process.pid}.${Date.now()}.tmp`;
+  fs.writeFileSync(temp, conteudo, { encoding: 'utf8', flag: 'wx' });
+  fs.renameSync(temp, alvo);
+}
+
 function shortText(value, max = 300) {
   return String(value ?? '').replace(/[\r\n\t]+/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, max);
 }
@@ -94,45 +119,136 @@ export function readAgenda(root = ROOT) {
  */
 export const MODELOS = ['haiku', 'sonnet', 'opus'];
 
-export function askClaude(prompt, { timeout = 180000, cli = process.env.RUMO_CLAUDE_CLI || 'claude', model = '', web = false } = {}) {
-  return new Promise((resolve, reject) => {
-    // Só aliases conhecidos: o que vem da página nunca entra tal e qual na linha de comandos.
-    const escolha = MODELOS.includes(model) ? ['--model', model] : [];
-    // Por omissão, modo restrito (sem ferramentas). Com `web`, abre-se só a pesquisa na web,
-    // que é o que a procura de vagas precisa; nunca ferramentas que corram comandos.
-    // WebFetch entra para confirmar filtros (remoto, data) na própria página da vaga: sem isso,
-    // só há excertos de pesquisa e a resposta honesta seria sempre "não consigo confirmar".
-    // Passa a lista como um único argumento. `--allowedTools` aceita vários valores e,
-    // no Windows, podia engolir os argumentos seguintes ou deixar a chamada sem pedido.
-    // `--tools` limita realmente esta execução às duas ferramentas de leitura da web.
-    const ferramentas = web
-      ? ['--restricted', '--tools', 'WebSearch,WebFetch', '--allowedTools', 'WebSearch,WebFetch']
-      : ['--restricted'];
-    // O pedido vai por stdin: como argumento, o Windows parte-o nos espaços.
-    const child = spawn(cli, ['-p', '--output-format', 'text', ...ferramentas, ...escolha], {
-      cwd: os.tmpdir(),
-      windowsHide: true,
-      shell: process.platform === 'win32', // no Windows o "claude" é um .cmd
-    });
-    child.stdin.on('error', () => { /* o processo pode fechar antes de ler tudo */ });
-    child.stdin.end(prompt);
-    let out = '';
-    let err = '';
-    const timer = setTimeout(() => { child.kill(); reject(new Error('demorou demasiado')); }, timeout);
-    child.stdout.on('data', (d) => { out += d; });
-    child.stderr.on('data', (d) => { err += d; });
-    child.on('error', () => { clearTimeout(timer); reject(new Error('nao-instalado')); });
-    child.on('close', (code) => {
-      clearTimeout(timer);
-      if (code === 0 && out.trim()) resolve(out.trim());
-      else {
-        // O Claude Code escreve alguns erros úteis (por exemplo, limite da conta) em stdout.
-        // Não os escondas atrás de uma mensagem genérica no painel.
-        const detalhe = (err.trim() || out.trim()).split(/\r?\n/).filter(Boolean).pop();
-        reject(new Error(detalhe || `o Claude terminou com o código ${code}`));
-      }
-    });
+// Um pedido de cada vez: cada chamada arranca um processo do Claude Code, e dois ou três ao
+// mesmo tempo (uma procura de vagas e um corretor) enchiam a memória e atrasavam tudo.
+let filaClaude = Promise.resolve();
+export function askClaude(prompt, opcoes = {}) {
+  const corre = () => askClaudeAgora(prompt, opcoes);
+  const resultado = filaClaude.then(corre, corre);
+  filaClaude = resultado.then(() => {}, () => {});
+  return resultado;
+}
+
+/**
+ * Onde está o Claude Code. No Windows, chama-se o `claude.exe` diretamente: sem shell, os
+ * argumentos nunca são reinterpretados. Só se não houver .exe (instalação por npm, que deixa
+ * um .cmd) é que se recorre à shell — e os argumentos são sempre fixos, nunca vêm da página.
+ */
+function localizarClaude(cli) {
+  // Os testes passam [executável, ...argumentos] para usar um Claude de mentira.
+  if (Array.isArray(cli)) return { cmd: cli[0], pre: cli.slice(1), shell: false };
+  if (cli !== 'claude' || process.platform !== 'win32') return { cmd: cli, shell: false };
+  for (const dir of String(process.env.PATH || '').split(path.delimiter)) {
+    const exe = path.join(dir, 'claude.exe');
+    if (dir && fs.existsSync(exe)) return { cmd: exe, shell: false };
+  }
+  return { cmd: cli, shell: true };
+}
+
+/** Argumentos de uma chamada: modo, ferramentas e modelo. Nada disto vem da página tal e qual. */
+function argumentosClaude({ model = '', web = false } = {}) {
+  // Só aliases conhecidos: o que vem da página nunca entra tal e qual na linha de comandos.
+  const escolha = MODELOS.includes(model) ? ['--model', model] : [];
+  // Por omissão, modo restrito (sem ferramentas). Com `web`, abre-se só a pesquisa na web,
+  // que é o que a procura de vagas precisa; nunca ferramentas que corram comandos.
+  // WebFetch entra para confirmar filtros (remoto, data) na própria página da vaga.
+  // A lista vai como um único argumento: `--allowedTools` aceita vários valores e podia engolir
+  // os argumentos seguintes. `--tools` limita realmente esta execução às duas ferramentas.
+  const ferramentas = web
+    ? ['--restricted', '--tools', 'WebSearch,WebFetch', '--allowedTools', 'WebSearch,WebFetch']
+    : ['--restricted'];
+  // Entrada e saída por mensagens: o processo arranca e fica à espera do pedido (é isso que
+  // permite tê-lo pronto antes de ele chegar), e a resposta chega aos bocados.
+  return ['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--include-partial-messages', ...ferramentas, ...escolha];
+}
+
+/**
+ * Arranca um processo do Claude Code e começa logo a ouvi-lo. Fica à espera de um pedido
+ * (`pedir`); enquanto espera, já fez o arranque, que é o que demora (cerca de 5 s).
+ */
+function arrancarClaude(opcoes, cli) {
+  const { cmd, pre = [], shell } = localizarClaude(cli);
+  const child = spawn(cmd, [...pre, ...argumentosClaude(opcoes)], { cwd: os.tmpdir(), windowsHide: true, shell });
+  const p = { child, vivo: true, onDelta: null, fim: null };
+  let resto = '';
+  let erro = '';
+  let resultado = null;
+  child.stdin.on('error', () => { /* o processo pode fechar antes de ler tudo */ });
+  child.stderr.on('data', (d) => { erro += d; });
+  child.stdout.on('data', (d) => {
+    resto += d;
+    const linhas = resto.split('\n');
+    resto = linhas.pop();
+    for (const linha of linhas) {
+      let msg;
+      try { msg = JSON.parse(linha); } catch { continue; }
+      const delta = msg.type === 'stream_event' && msg.event?.delta?.type === 'text_delta' ? msg.event.delta.text : null;
+      if (delta) p.onDelta?.(delta);
+      if (msg.type === 'result') resultado = msg;
+    }
   });
+  const acabar = (falha) => {
+    p.vivo = false;
+    if (!p.fim) return;
+    const { resolve, reject } = p.fim;
+    p.fim = null;
+    if (falha) return reject(falha);
+    if (resultado && !resultado.is_error && String(resultado.result || '').trim()) return resolve(String(resultado.result).trim());
+    // O Claude Code escreve alguns erros úteis (por exemplo, limite da conta) no resultado ou
+    // no stderr. Não os escondas atrás de uma mensagem genérica no painel.
+    const detalhe = String(resultado?.result || '').trim() || erro.trim().split(/\r?\n/).filter(Boolean).pop();
+    reject(new Error(detalhe || 'o Claude terminou sem resposta'));
+  };
+  child.on('error', () => acabar(new Error('nao-instalado')));
+  child.on('close', () => acabar(null));
+  return p;
+}
+
+/** Entrega o pedido a um processo já arrancado e espera pela resposta. */
+function pedirAoClaude(p, prompt, { timeout, onDelta }) {
+  return new Promise((resolve, reject) => {
+    if (!p.vivo) return reject(new Error('o Claude Code terminou antes do pedido'));
+    const timer = setTimeout(() => { p.child.kill(); reject(new Error('demorou demasiado')); }, timeout);
+    p.onDelta = onDelta || null;
+    p.fim = {
+      resolve: (t) => { clearTimeout(timer); resolve(t); },
+      reject: (e) => { clearTimeout(timer); reject(e); },
+    };
+    p.child.stdin.write(`${JSON.stringify({ type: 'user', message: { role: 'user', content: prompt } })}\n`);
+    p.child.stdin.end();
+  });
+}
+
+// Um processo já arrancado por tipo de pedido (modelo + com/sem web), à espera do próximo.
+// Arrancar o Claude Code demora ~5 s; com ele pronto, a primeira palavra chega em ~1,5 s.
+const prontos = new Map();
+const chaveDe = ({ model = '', web = false } = {}) => `${web ? 'web' : 'restrito'}|${MODELOS.includes(model) ? model : ''}`;
+
+/** Deixa um Claude Code pronto para este tipo de pedido (só com o executável verdadeiro). */
+export function aquecerClaude(opcoes = {}, cli = process.env.RUMO_CLAUDE_CLI || 'claude') {
+  if (cli !== 'claude') return; // os testes usam executáveis falsos: nada de processos à espera
+  const chave = chaveDe(opcoes);
+  if (prontos.get(chave)?.vivo) return;
+  const p = arrancarClaude(opcoes, cli);
+  prontos.set(chave, p);
+  p.child.on('close', () => { if (prontos.get(chave) === p) prontos.delete(chave); });
+}
+
+/** Termina os processos à espera (quando o painel desliga). */
+export function desligarClaude() {
+  for (const p of prontos.values()) { try { p.child.kill(); } catch { /* já terminou */ } }
+  prontos.clear();
+}
+
+async function askClaudeAgora(prompt, { timeout = 180000, cli = process.env.RUMO_CLAUDE_CLI || 'claude', model = '', web = false, onDelta = null } = {}) {
+  const chave = chaveDe({ model, web });
+  let p = prontos.get(chave);
+  prontos.delete(chave);
+  if (!p?.vivo) p = arrancarClaude({ model, web }, cli);
+  const texto = await pedirAoClaude(p, prompt, { timeout, onDelta });
+  // Correu bem: deixa já outro pronto para o próximo pedido do mesmo tipo.
+  aquecerClaude({ model, web }, cli);
+  return texto;
 }
 
 // ---------------------------------------------------------------- finanças locais
@@ -164,16 +280,8 @@ function writeFinanceFile(root, relative, content) {
   fs.mkdirSync(path.dirname(target), { recursive: true });
   const normalized = String(content).replace(/\r\n/g, '\n').replace(/\s*$/, '\n');
   if (fs.existsSync(target) && fs.readFileSync(target, 'utf8').replace(/\r\n/g, '\n') === normalized) return false;
-  if (fs.existsSync(target)) {
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const safe = relative.replace(/[\\/]/g, '__').replace(/[^a-zA-Z0-9_.-]/g, '_');
-    const backup = path.join(root, '.sync', 'backups', 'financas', safe, `${stamp}${path.extname(relative) || '.txt'}`);
-    fs.mkdirSync(path.dirname(backup), { recursive: true });
-    fs.copyFileSync(target, backup);
-  }
-  const temp = `${target}.${process.pid}.${Date.now()}.tmp`;
-  fs.writeFileSync(temp, normalized, { encoding: 'utf8', flag: 'wx' });
-  fs.renameSync(temp, target);
+  const safe = relative.replace(/[\\/]/g, '__').replace(/[^a-zA-Z0-9_.-]/g, '_');
+  escreverComCopia(root, target, normalized, path.join('financas', safe), path.extname(relative) || '.txt');
   return true;
 }
 
@@ -316,16 +424,57 @@ export function writeWriting(body, root = ROOT) {
     } catch { /* o ficheiro inválido será substituído, depois de ficar no backup */ }
   }
   const content = `${JSON.stringify(cleaned, null, 2)}\n`;
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  if (fs.existsSync(target)) {
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const backup = path.join(root, '.sync', 'backups', 'escrita', 'painel.json', `${stamp}.json`);
-    fs.mkdirSync(path.dirname(backup), { recursive: true });
-    fs.copyFileSync(target, backup);
+  escreverComCopia(root, target, content, path.join('escrita', 'painel.json'), '.json');
+  return true;
+}
+
+// ---------------------------------------------------------------- outros dados do painel
+
+/**
+ * O que antes ficava só no navegador do painel local. Cada ficheiro guarda o documento tal e
+ * qual a página o guarda no claude.ai, para o /sincronizar os juntar sem traduções.
+ * Todos ficam fora do git.
+ */
+export const DADOS_PAINEL = {
+  conversas: { file: 'pensar/conversas/conversar.json', lista: 'items', max: 30 },
+  cargos: { file: 'carreira/cargos.json', lista: 'items', max: 6 },
+  'vagas-fora': { file: 'carreira/vagas-fora.json', lista: 'items', max: 2000 },
+  revisoes: { file: 'rotina/revisoes/painel.json', lista: 'items', max: 52 },
+  foco: { file: 'rotina/foco.json', mapa: 'days' },
+};
+
+/** Só a forma esperada: uma lista (com limite) ou um mapa dia → número. */
+export function limparDados(parte, body = {}) {
+  const def = DADOS_PAINEL[parte];
+  if (!def) throw new Error('parte-desconhecida');
+  if (def.lista) {
+    const items = Array.isArray(body[def.lista]) ? body[def.lista] : [];
+    return { [def.lista]: items.filter((x) => x !== null && x !== undefined).slice(0, def.max) };
   }
-  const temp = `${target}.${process.pid}.${Date.now()}.tmp`;
-  fs.writeFileSync(temp, content, { encoding: 'utf8', flag: 'wx' });
-  fs.renameSync(temp, target);
+  const fonte = body[def.mapa] && typeof body[def.mapa] === 'object' ? body[def.mapa] : {};
+  const dias = Object.fromEntries(Object.entries(fonte)
+    .filter(([d, n]) => /^\d{4}-\d{2}-\d{2}$/.test(d) && Number.isFinite(Number(n)) && Number(n) > 0)
+    .map(([d, n]) => [d, Math.min(99, Math.round(Number(n)))]));
+  return { [def.mapa]: dias };
+}
+
+export function lerDados(parte, root = ROOT) {
+  const def = DADOS_PAINEL[parte];
+  if (!def) throw new Error('parte-desconhecida');
+  const file = path.join(root, def.file);
+  if (!fs.existsSync(file)) return { exists: false, data: limparDados(parte) };
+  try { return { exists: true, data: limparDados(parte, JSON.parse(fs.readFileSync(file, 'utf8'))) }; }
+  catch { return { exists: false, error: `${def.file} não pôde ser lido.`, data: limparDados(parte) }; }
+}
+
+export function gravarDados(parte, body, root = ROOT) {
+  const def = DADOS_PAINEL[parte];
+  if (!def) throw new Error('parte-desconhecida');
+  const dados = limparDados(parte, body);
+  const file = path.join(root, def.file);
+  const conteudo = `${JSON.stringify(dados, null, 2)}\n`;
+  if (fs.existsSync(file) && fs.readFileSync(file, 'utf8') === conteudo) return false;
+  escreverComCopia(root, file, conteudo, def.file, '.json');
   return true;
 }
 
@@ -456,25 +605,15 @@ function readDef(root, def) {
 }
 
 function atomicWrite(root, def, content) {
-  const target = path.join(root, def.file);
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  if (fs.existsSync(target)) {
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const backup = path.join(root, '.sync', 'backups', 'config', def.id, `${stamp}.md`);
-    fs.mkdirSync(path.dirname(backup), { recursive: true });
-    fs.copyFileSync(target, backup);
-  }
-  const temp = `${target}.${process.pid}.${Date.now()}.tmp`;
-  fs.writeFileSync(temp, content, { encoding: 'utf8', flag: 'wx' });
-  fs.renameSync(temp, target);
+  escreverComCopia(root, path.join(root, def.file), content, path.join('config', def.id), '.md');
 }
 
-async function bodyOf(req) {
+async function bodyOf(req, max = MAX_BODY) {
   const chunks = [];
   let size = 0;
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > MAX_BODY) throw new Error('too_large');
+    if (size > max) throw new Error('too_large');
     chunks.push(chunk);
   }
   return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
@@ -484,16 +623,28 @@ export function createPanelServer({ token = crypto.randomBytes(24).toString('bas
   const server = http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url, 'http://127.0.0.1');
-      if (url.pathname === '/' && req.method === 'GET') {
-        const html = fs.readFileSync(htmlFile);
+      // A página e os dois ficheiros dela (estilos e lógica), lado a lado em prototipo/.
+      const PAGINA = {
+        '/': [htmlFile, 'text/html; charset=utf-8'],
+        '/rumo.css': [path.join(path.dirname(htmlFile), 'rumo.css'), 'text/css; charset=utf-8'],
+        '/rumo.js': [path.join(path.dirname(htmlFile), 'rumo.js'), 'text/javascript; charset=utf-8'],
+      };
+      if (PAGINA[url.pathname] && req.method === 'GET') {
+        const [ficheiro, tipo] = PAGINA[url.pathname];
+        if (!fs.existsSync(ficheiro)) return json(res, 404, { error: 'Ficheiro do painel em falta.' });
+        const corpo = fs.readFileSync(ficheiro);
         res.writeHead(200, {
-          'Content-Type': 'text/html; charset=utf-8',
-          'Content-Length': html.length,
+          'Content-Type': tipo,
+          'Content-Length': corpo.length,
           'Cache-Control': 'no-store',
-          // cdnjs só para o leitor de PDF do CV (pdf.js), carregado a pedido; o worker precisa de blob:.
-          'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data:;",
+          // Nada do endereço desta página (que traz a chave) sai para sites de fora.
+          'Referrer-Policy': 'no-referrer',
+          'X-Content-Type-Options': 'nosniff',
+          // Os scripts vêm só deste servidor (rumo.js) e do cdnjs, para o leitor de PDF do CV,
+          // carregado a pedido: nada de scripts embutidos na página. O worker do pdf.js precisa de blob:.
+          'Content-Security-Policy': "default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data:;",
         });
-        return res.end(html);
+        return res.end(corpo);
       }
       if (!url.pathname.startsWith('/api/') || !authorized(req, token)) return json(res, 403, { error: 'Acesso recusado.' });
       if (url.pathname === '/api/emails' && req.method === 'GET') return json(res, 200, readEmails(root));
@@ -517,6 +668,14 @@ export function createPanelServer({ token = crypto.randomBytes(24).toString('bas
         const changed = writeWriting(body, root);
         return json(res, 200, { ok: true, changed });
       }
+      const dadosMatch = url.pathname.match(/^\/api\/dados\/([a-z-]+)$/);
+      if (dadosMatch && !DADOS_PAINEL[dadosMatch[1]]) return json(res, 404, { error: 'Dados desconhecidos.' });
+      if (dadosMatch && req.method === 'GET') return json(res, 200, lerDados(dadosMatch[1], root));
+      if (dadosMatch && req.method === 'PUT') {
+        // As conversas são o que mais cresce (30 conversas de 40 mensagens): têm mais margem.
+        const body = await bodyOf(req, 8 * MAX_BODY);
+        return json(res, 200, { ok: true, changed: gravarDados(dadosMatch[1], body, root) });
+      }
       if (url.pathname === '/api/limites' && (req.method === 'GET' || req.method === 'POST')) {
         return json(res, 200, await readLimits());
       }
@@ -524,14 +683,27 @@ export function createPanelServer({ token = crypto.randomBytes(24).toString('bas
         const body = await bodyOf(req);
         const prompt = String(body.prompt ?? '').slice(0, 60000);
         if (!prompt.trim()) return json(res, 400, { error: 'Pedido vazio.' });
+        const web = body.web === true;
+        const opcoes = { model: String(body.modelo ?? ''), web, timeout: web ? 300000 : 180000 };
+        const mensagemDeErro = (e) => (e.message === 'nao-instalado'
+          ? 'O Claude Code não está instalado neste computador (ou não está no PATH).'
+          : e.message === 'demorou demasiado' ? 'O Claude demorou demasiado. Tenta outra vez.' : `O Claude não respondeu: ${e.message}`);
+        if (body.stream === true) {
+          // A resposta vai aos bocados, uma linha JSON por bocado: {"delta"} e, no fim,
+          // {"text"} com o texto completo ou {"error"}.
+          res.writeHead(200, { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+          const linha = (o) => { if (!res.writableEnded) res.write(`${JSON.stringify(o)}\n`); };
+          try {
+            linha({ text: await askClaude(prompt, { ...opcoes, onDelta: (delta) => linha({ delta }) }) });
+          } catch (e) {
+            linha({ error: mensagemDeErro(e) });
+          }
+          return res.end();
+        }
         try {
-          const web = body.web === true;
-          return json(res, 200, { text: await askClaude(prompt, { model: String(body.modelo ?? ''), web, timeout: web ? 300000 : 180000 }) });
+          return json(res, 200, { text: await askClaude(prompt, opcoes) });
         } catch (e) {
-          const msg = e.message === 'nao-instalado'
-            ? 'O Claude Code não está instalado neste computador (ou não está no PATH).'
-            : e.message === 'demorou demasiado' ? 'O Claude demorou demasiado. Tenta outra vez.' : `O Claude não respondeu: ${e.message}`;
-          return json(res, 502, { error: msg });
+          return json(res, 502, { error: mensagemDeErro(e) });
         }
       }
       if (url.pathname === '/api/files' && req.method === 'GET') {
@@ -654,7 +826,9 @@ export async function serve(argv = []) {
   const bye = () => { clearState(ROOT, process.pid); process.exit(0); };
   process.on('SIGINT', bye);
   process.on('SIGTERM', bye);
-  process.on('exit', () => clearState(ROOT, process.pid));
+  process.on('exit', () => { desligarClaude(); clearState(ROOT, process.pid); });
+  // Um Claude Code já arrancado à espera do primeiro pedido: poupa ~5 s na primeira resposta.
+  aquecerClaude();
   console.log(`Rumo local: ${url}`);
   if (!noOpen) openBrowser(url);
   return { server, url };

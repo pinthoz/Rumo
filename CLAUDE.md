@@ -59,7 +59,7 @@ Tarefas mecânicas fazem-se com scripts (Node, sem dependências), a partir da r
 | `node scripts/lembretes.mjs` | Rotina | `instalar`, `remover`, `estado`, `testar` (notificações agendadas, Windows e Mac) |
 | `node scripts/financas.mjs` | Finanças | `importar extrato.csv`, `categorizar`, `resumo 2026-09`, `recorrentes`, `patrimonio` |
 | `node scripts/carreira.mjs` | Carreira | `procurar`, `novas`, `guardar <id>`, `adicionar`, `mudar <id> <estado>`, `lista`, `resumo`, `agenda` |
-| `node scripts/painel.mjs` | Todas | `abrir` (padrão: arranca em segundo plano, sem janela, e abre no navegador), `parar`, `estado`, `servir` (primeiro plano, para ver erros). As funções com IA do painel local passam pelo `claude -p` em modo restrito |
+| `node scripts/painel.mjs` | Todas | `abrir` (padrão: arranca em segundo plano, sem janela, e abre no navegador), `parar`, `estado`, `servir` (primeiro plano, para ver erros). As funções com IA do painel local passam pelo `claude -p` em modo restrito, com um processo já arrancado à espera e a resposta enviada aos bocados |
 | `node scripts/atalho.mjs` | Todas | `criar` (padrão), `remover`: atalho "Rumo" no Windows, com o logótipo (o `Rumo.lnk` não vai para o git) |
 | `node scripts/sincronizar.mjs` | Todas | `fundir`, `confirmar`, `estado` (usado pelo `/sincronizar`) |
 | `node scripts/cwos.mjs` | Escrita | `style texto.md`, `cliches texto.md` (textos soltos); `validate`, `context sc-01` (projetos) |
@@ -68,12 +68,12 @@ Testes: `npm test`. As contas e as contagens fazem-se sempre com os scripts, nun
 
 ## O painel Rumo no claude.ai
 
-O painel (`prototipo/rumo.html`) é a versão do Rumo no claude.ai, com as mesmas áreas, para usar no navegador ou no telemóvel. Cada pessoa publica a sua cópia com `/rumo`, e `/sincronizar` junta a página com `rotina/tarefas.md` e `financas/`. O Claude dentro da página não tem internet; as perguntas que precisam de dados atuais seguem para uma conversa normal (botão "Pesquisar no Claude") ou ficam no Claude Code.
+O painel (`prototipo/rumo.html`, com `rumo.css` e `rumo.js` ao lado) é a versão do Rumo no claude.ai, com as mesmas áreas, para usar no navegador ou no telemóvel. Cada pessoa publica a sua cópia com `/rumo`, e `/sincronizar` junta a página com os ficheiros do computador: tarefas, finanças, carreira, ideias, escrita, conversas, revisões e foco. O Claude dentro da página não tem internet; as perguntas que precisam de dados atuais seguem para uma conversa normal (botão "Pesquisar no Claude") ou ficam no Claude Code.
 
 ## Privacidade
 
 - Os dados financeiros e as notas pessoais não vão para o git (`.gitignore`).
-- Os ficheiros pessoais das áreas (`rotina/tarefas.md`, `rotina/rotina.md`, `rotina/emails.json`, `escrita/voz.md`, `lingua/erros-frequentes.md`, `lingua/glossario.md`, `financas/orcamento.csv`, `financas/regras.csv`, `financas/contas.csv`, `financas/objetivos.md`, `carreira/cv.md`, `carreira/perfil.md`, `carreira/candidaturas.csv`) também ficam fora do git. No git está só o modelo ao lado (`<nome>.modelo.md` ou `.csv`). Se o ficheiro não existir, os scripts criam-no a partir do modelo; se fores tu a precisar do ficheiro, copia o modelo antes de o preencher. Nunca escrevas dados pessoais num `.modelo.*`.
+- Os ficheiros pessoais das áreas (`rotina/tarefas.md`, `rotina/rotina.md`, `rotina/emails.json`, `escrita/voz.md`, `lingua/erros-frequentes.md`, `lingua/glossario.md`, `financas/orcamento.csv`, `financas/regras.csv`, `financas/contas.csv`, `financas/objetivos.md`, `carreira/cv.md`, `carreira/perfil.md`, `carreira/candidaturas.csv`) também ficam fora do git, tal como os dados do painel local (`escrita/painel.json`, `pensar/conversas/conversar.json`, `carreira/cargos.json`, `carreira/vagas-fora.json`, `rotina/foco.json`, `rotina/revisoes/`). No git está só o modelo ao lado (`<nome>.modelo.md` ou `.csv`). Se o ficheiro não existir, os scripts criam-no a partir do modelo; se fores tu a precisar do ficheiro, copia o modelo antes de o preencher. Nunca escrevas dados pessoais num `.modelo.*`.
 - Só saem do computador de duas formas:
   - quando o utilizador usa o painel no claude.ai;
   - quando corre `/sincronizar`.

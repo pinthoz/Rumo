@@ -10,6 +10,8 @@ const root = fs.mkdtempSync(path.join(os.tmpdir(), 'rumo-painel-'));
 fs.mkdirSync(path.join(root, 'prototipo'), { recursive: true });
 fs.mkdirSync(path.join(root, 'rotina'), { recursive: true });
 fs.writeFileSync(path.join(root, 'prototipo', 'rumo.html'), '<title>Rumo teste</title>');
+fs.writeFileSync(path.join(root, 'prototipo', 'rumo.css'), 'body { color: black; }');
+fs.writeFileSync(path.join(root, 'prototipo', 'rumo.js'), 'console.log(1);');
 fs.writeFileSync(path.join(root, 'rotina', 'rotina.modelo.md'), '# Rotina-base\n\n## Horários\n- manhã\n');
 fs.writeFileSync(path.join(root, 'rotina', 'emails.json'), JSON.stringify({
   updatedAt: '2026-09-17T08:00:00Z',
@@ -131,6 +133,45 @@ test('painel local: a política de segurança deixa passar só o leitor de PDF',
 test('painel local: sem Claude Code, a ponte falha com uma mensagem útil', async () => {
   const { askClaude } = await import('./painel.mjs');
   await assert.rejects(() => askClaude('olá', { cli: 'claude-que-nao-existe-12345', timeout: 8000 }));
+});
+
+test('painel local: a resposta do Claude chega aos bocados e inteira no fim', async () => {
+  const { askClaude } = await import('./painel.mjs');
+  // Um Claude de mentira que fala stream-json: lê o pedido e responde em dois bocados.
+  const falso = path.join(root, 'claude-falso.mjs');
+  fs.writeFileSync(falso, `
+    let entrada = '';
+    process.stdin.on('data', (d) => { entrada += d; });
+    process.stdin.on('end', () => {
+      const pedido = JSON.parse(entrada.trim()).message.content;
+      const ev = (text) => console.log(JSON.stringify({ type: 'stream_event', event: { delta: { type: 'text_delta', text } } }));
+      console.log('isto não é JSON');
+      ev('Olá, '); ev(pedido);
+      console.log(JSON.stringify({ type: 'result', is_error: false, result: 'Olá, ' + pedido }));
+    });`);
+  const bocados = [];
+  const texto = await askClaude('mundo', { cli: [process.execPath, falso], timeout: 8000, onDelta: (d) => bocados.push(d) });
+  assert.deepEqual(bocados, ['Olá, ', 'mundo']);
+  assert.equal(texto, 'Olá, mundo');
+
+  // Um resultado com erro (por exemplo, limite da conta) chega à página com o motivo.
+  const comErro = path.join(root, 'claude-erro.mjs');
+  fs.writeFileSync(comErro, `process.stdin.resume(); process.stdin.on('end', () => console.log(JSON.stringify({ type: 'result', is_error: true, result: 'Limite atingido' })));`);
+  await assert.rejects(() => askClaude('x', { cli: [process.execPath, comErro], timeout: 8000 }), /Limite atingido/);
+});
+
+test('painel local: em modo aos bocados, os erros também chegam numa linha', async () => {
+  const antes = process.env.RUMO_CLAUDE_CLI;
+  process.env.RUMO_CLAUDE_CLI = 'claude-inexistente-stream';
+  try {
+    const res = await api('/api/claude', { method: 'POST', body: JSON.stringify({ prompt: 'olá', stream: true }) });
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get('content-type'), /ndjson/);
+    const linhas = (await res.text()).trim().split('\n').map((l) => JSON.parse(l));
+    assert.ok(linhas.at(-1).error, 'a última linha diz o que falhou');
+  } finally {
+    if (antes === undefined) delete process.env.RUMO_CLAUDE_CLI; else process.env.RUMO_CLAUDE_CLI = antes;
+  }
 });
 
 test('painel local: a API do Claude recusa pedidos vazios e exige token', async () => {
@@ -259,4 +300,58 @@ test('painel local: ideias, rascunhos, voz e correções ficam num ficheiro com 
   await api('/api/escrita', { method: 'PUT', body: JSON.stringify(payload) });
   const backups = fs.readdirSync(path.join(root, '.sync', 'backups', 'escrita', 'painel.json'));
   assert.equal(backups.length, 1);
+});
+
+test('painel local: os pedidos ao Claude correm um de cada vez', async () => {
+  const { askClaude } = await import('./painel.mjs');
+  // Um "claude" de mentira: escreve quando começa e quando acaba, para se ver a sobreposição.
+  const marcas = [];
+  const tres = [1, 2, 3].map((n) => askClaude(`pedido ${n}`, { cli: 'claude-inexistente-xyz', timeout: 3000 })
+    .then(() => marcas.push(`fim ${n}`), () => marcas.push(`fim ${n}`)));
+  await Promise.all(tres);
+  assert.deepEqual(marcas, ['fim 1', 'fim 2', 'fim 3'], 'terminam pela ordem de entrada, sem se atropelarem');
+});
+
+test('painel local: serve a página, os estilos e a lógica, sem scripts embutidos na política', async () => {
+  for (const [caminho, tipo] of [['/', 'text/html'], ['/rumo.css', 'text/css'], ['/rumo.js', 'text/javascript']]) {
+    const r = await fetch(base + caminho);
+    assert.equal(r.status, 200, caminho);
+    assert.ok(r.headers.get('content-type').startsWith(tipo), caminho);
+  }
+  const csp = (await fetch(base)).headers.get('content-security-policy');
+  assert.doesNotMatch(csp.match(/script-src[^;]*/)[0], /unsafe-inline/, 'scripts só de ficheiros, nunca embutidos');
+  assert.equal((await fetch(base + '/../package.json')).status, 403, 'nada fora da lista de ficheiros');
+});
+
+test('painel local: as cópias de segurança têm limite', async () => {
+  const { escreverComCopia, COPIAS_POR_FICHEIRO } = await import('./painel.mjs');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rumo-copias-'));
+  try {
+    const alvo = path.join(dir, 'notas.md');
+    for (let i = 0; i < COPIAS_POR_FICHEIRO + 7; i++) {
+      escreverComCopia(dir, alvo, `versão ${i}\n`, 'teste', '.md');
+      await new Promise((r) => setTimeout(r, 2)); // nomes de cópia diferentes (vão pela hora)
+    }
+    const copias = fs.readdirSync(path.join(dir, '.sync', 'backups', 'teste'));
+    assert.equal(copias.length, COPIAS_POR_FICHEIRO, 'nunca mais do que o limite');
+    assert.equal(fs.readFileSync(alvo, 'utf8'), `versão ${COPIAS_POR_FICHEIRO + 6}\n`, 'o ficheiro fica com a última versão');
+    const maisRecente = copias.sort().at(-1);
+    assert.equal(fs.readFileSync(path.join(dir, '.sync', 'backups', 'teste', maisRecente), 'utf8'), `versão ${COPIAS_POR_FICHEIRO + 5}\n`, 'a cópia mais recente é a penúltima versão');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('painel local: conversas, cargos, vagas removidas, revisões e foco ficam em ficheiros', async () => {
+  assert.equal((await api('/api/dados/senhas')).status, 404, 'só as partes conhecidas');
+  let doc = await (await api('/api/dados/conversas')).json();
+  assert.equal(doc.exists, false);
+  const res = await api('/api/dados/conversas', { method: 'PUT', body: JSON.stringify({ items: [{ id: 'c1', titulo: 'Olá', turnos: [] }], extra: 'ignorado' }) });
+  assert.equal(res.status, 200);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, 'pensar', 'conversas', 'conversar.json'), 'utf8')), { items: [{ id: 'c1', titulo: 'Olá', turnos: [] }] });
+  doc = await (await api('/api/dados/conversas')).json();
+  assert.equal(doc.exists, true);
+  // Foco: só dias válidos e números positivos.
+  await api('/api/dados/foco', { method: 'PUT', body: JSON.stringify({ days: { '2026-09-22': 2, ontem: 5, '2026-09-21': -1 } }) });
+  assert.deepEqual((await (await api('/api/dados/foco')).json()).data, { days: { '2026-09-22': 2 } });
 });
