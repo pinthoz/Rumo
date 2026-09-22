@@ -91,9 +91,26 @@ test('hook de arranque aponta para um comando existente e só mostra mensagem ao
   assert.match(fs.readFileSync(path.join(root, 'scripts', 'rotina.mjs'), 'utf8'), /arranque: cmdArranque/);
 });
 
+// O painel está em três ficheiros: a página, os estilos e a lógica.
+const painel = () => ({
+  html: fs.readFileSync(path.join(root, 'prototipo', 'rumo.html'), 'utf8'),
+  script: fs.readFileSync(path.join(root, 'prototipo', 'rumo.js'), 'utf8'),
+  css: fs.readFileSync(path.join(root, 'prototipo', 'rumo.css'), 'utf8'),
+});
+
+test('artifact: a página carrega os seus ficheiros e não tem scripts embutidos', () => {
+  const { html, css } = painel();
+  assert.match(html, /<link rel="stylesheet" href="rumo\.css">/);
+  assert.match(html, /<script src="rumo\.js"><\/script>/);
+  // Sem scripts embutidos nem atributos on*: é isso que deixa o painel local
+  // correr com uma política de segurança sem 'unsafe-inline' nos scripts.
+  assert.doesNotMatch(html, /<script>/, 'script embutido na página');
+  assert.doesNotMatch(html, /\son(click|change|input|submit|load|keydown)=/, 'atributo on* no HTML');
+  assert.ok(css.length > 1000, 'o CSS parece vazio');
+});
+
 test('artifact: JavaScript válido, ids únicos e orientação de carreira presente', () => {
-  const html = fs.readFileSync(path.join(root, 'prototipo', 'rumo.html'), 'utf8');
-  const script = html.match(/<script>([\s\S]*)<\/script>/)?.[1];
+  const { html, script } = painel();
   assert.ok(script, 'falta o script do artifact');
   assert.doesNotThrow(() => new Function(script), 'JavaScript inválido no artifact');
   const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
@@ -105,8 +122,7 @@ test('artifact: JavaScript válido, ids únicos e orientação de carreira prese
 
 // Os erros que apanhámos a olho (botões mudos, ids trocados) passam a ser apanhados aqui.
 test('artifact: tudo o que o script procura existe no HTML', () => {
-  const html = fs.readFileSync(path.join(root, 'prototipo', 'rumo.html'), 'utf8');
-  const script = html.match(/<script>([\s\S]*)<\/script>/)[1];
+  const { html, script } = painel();
   const ids = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
   // `focus-dot` é criado pelo próprio script, ao montar os separadores.
   const criadosPeloScript = new Set(['focus-dot']);
@@ -125,8 +141,7 @@ test('artifact: tudo o que o script procura existe no HTML', () => {
 });
 
 test('artifact: as etapas da carreira mostram secções que existem', () => {
-  const html = fs.readFileSync(path.join(root, 'prototipo', 'rumo.html'), 'utf8');
-  const script = html.match(/<script>([\s\S]*)<\/script>/)[1];
+  const { html, script } = painel();
   const ids = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
   const bloco = script.match(/const ETAPAS = \{([\s\S]*?)\};/)?.[1];
   assert.ok(bloco, 'falta o mapa das etapas da carreira');

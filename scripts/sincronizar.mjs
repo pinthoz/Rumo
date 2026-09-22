@@ -12,6 +12,9 @@
  *         financas/regras.csv · financas/contas.csv · carreira/candidaturas.csv · carreira/vagas.csv
  *         carreira/cv.md (só o Markdown; o ficheiro original do CV nunca é copiado)
  * Página: tarefas · fin-index · fin-AAAA-MM · orcamento · regras · contas · carreira · vagas · cv
+ *         + o resto do painel: ideias · pensar · rascunhos · lingua · voz (escrita/painel.json),
+ *         objetivos (financas/objetivos.md), conversas · cargos · vagas-fora · revisoes · foco
+ *         (os ficheiros de DADOS_PAINEL em painel.mjs)
  *
  * `vagas` só vai do computador para a página (a procura corre no computador; a página não tem
  * internet). Guardar uma vaga na página cria uma candidatura, e essa volta pelo `carreira`.
@@ -465,6 +468,156 @@ export function fuse({ remote, today, base }) {
     report.push(`Vagas por decidir enviadas para a página: ${jobs.length}.`);
   }
 
+  // --- o resto do painel: ideias, escrita, objetivos, conversas, cargos, vagas removidas, revisões, foco
+  const extra = fuseExtras({ remote, base: base?.extras });
+  report.push(...extra.report);
+  Object.assign(send, extra.send);
+  localWrites.push(...extra.localWrites);
+  nextBase.extras = extra.nextBase;
+
+  return { report, send, localWrites, nextBase };
+}
+
+// ---------------------------------------------------------------- resto do painel
+
+const WRITING_FILE = path.join(ROOT, 'escrita', 'painel.json');
+const GOALS_FILE = path.join(FIN, 'objetivos.md');
+const dataDe = (x) => String(x?.updated || x?.data || x?.d || x?.created || '');
+// Em conflito, ganha a alteração mais recente; em empate, a da página.
+const maisRecente = (l, r) => (dataDe(l) > dataDe(r) ? l : r);
+
+/**
+ * Documentos de lista da página e onde vivem no computador. `chave` identifica o mesmo item
+ * dos dois lados; `ordem` põe os mais recentes primeiro, como a página os mostra.
+ */
+const LISTAS = {
+  ideias: { onde: 'escrita', campo: 'ideas', max: 100, chave: (x) => x.id, ordem: true },
+  pensar: { onde: 'escrita', campo: 'notes', max: 60, chave: (x) => `${x.d}|${fold(x.tema)}`, ordem: true },
+  rascunhos: { onde: 'escrita', campo: 'drafts', max: 40, chave: (x) => x.id, ordem: true },
+  lingua: { onde: 'escrita', campo: 'errors', max: 200, chave: (x) => `${x.lang}|${fold(x.de)}|${fold(x.para)}`, resolve: (l, r) => (Number(l.vezes) > Number(r.vezes) ? l : r) },
+  conversas: { onde: 'pensar/conversas/conversar.json', max: 30, chave: (x) => x.id, ordem: true },
+  'vagas-fora': { onde: 'carreira/vagas-fora.json', max: 2000, chave: (x) => String(x) },
+  revisoes: { onde: 'rotina/revisoes/painel.json', max: 52, chave: (x) => x.semana, ordem: (x) => String(x.semana || '') },
+};
+
+/** Junta duas listas a três vias, pela chave de cada item. */
+export function mergeList(local, remote, base, { chave, resolve = maisRecente, ordem, max }) {
+  const comId = (list) => (list || []).map((x) => ({ id: chave(x), x }));
+  const same = (a, b) => json(a.x) === json(b.x);
+  const m = mergeById(comId(local), comId(remote), base ? comId(base) : null, { same, resolve: (l, r) => (resolve(l.x, r.x) === l.x ? l : r) });
+  let items = m.result.map((w) => w.x);
+  if (ordem) {
+    const k = typeof ordem === 'function' ? ordem : dataDe;
+    items = items.map((x, i) => [x, i]).sort((a, b) => k(b[0]).localeCompare(k(a[0])) || a[1] - b[1]).map(([x]) => x);
+  }
+  return { items: items.slice(0, max), conflicts: m.conflicts, stats: m.stats };
+}
+
+/** Um valor inteiro (texto dos objetivos, perfil de voz, cargos) a três vias: ganha quem mudou. */
+export function mergeWhole(local, remote, base) {
+  const eq = (a, b) => json(a ?? null) === json(b ?? null);
+  if (remote === undefined || eq(local, remote)) return { value: local, conflito: false };
+  if (local === undefined) return { value: remote, conflito: false };
+  if (base !== undefined && eq(local, base)) return { value: remote, conflito: false };
+  if (base !== undefined && eq(remote, base)) return { value: local, conflito: false };
+  // Mudou dos dois lados (ou é a primeira vez e diferem): fica o da página.
+  return { value: remote, conflito: true };
+}
+
+const readJson = (file) => { try { const t = readIf(file); return t === null ? null : JSON.parse(t); } catch { return null; } };
+
+export function fuseExtras({ remote, base }) {
+  const report = [];
+  const send = {};
+  const localWrites = [];
+  const nextBase = {};
+  const escrita = readJson(WRITING_FILE);
+  const novaEscrita = escrita ? { ...escrita } : { version: 1, ideas: [], notes: [], drafts: [], errors: [], voice: { amostras: [], perfil: '', confirmado: false } };
+  let escritaMudou = false;
+  const resumo = [];
+
+  for (const [doc, def] of Object.entries(LISTAS)) {
+    const noFicheiro = def.onde === 'escrita' ? null : readJson(path.join(ROOT, def.onde));
+    const local = def.onde === 'escrita' ? (escrita ? escrita[def.campo] : undefined) : noFicheiro?.items;
+    const remoto = remote[doc]?.data?.items;
+    if (local === undefined && remoto === undefined) continue;
+    const m = mergeList(local || [], remoto || [], base?.[doc], def);
+    nextBase[doc] = m.items;
+    if (m.stats.fromLocal || m.stats.fromRemote || m.stats.deleted || m.conflicts.length) {
+      resumo.push(`${doc} ${m.stats.fromLocal}↑ ${m.stats.fromRemote}↓${m.stats.deleted ? ` ${m.stats.deleted}✕` : ''}`);
+    }
+    if (m.conflicts.length) report.push(`  ⚠ ${doc}: ${m.conflicts.length} alterado(s) dos dois lados (ficou o mais recente).`);
+    if (remoto === undefined || json(remoto) !== json(m.items)) send[doc] = { items: m.items };
+    if (json(local || []) !== json(m.items) || local === undefined) {
+      if (def.onde === 'escrita') { novaEscrita[def.campo] = m.items; escritaMudou = true; }
+      else localWrites.push({ file: path.join(ROOT, def.onde), content: `${JSON.stringify({ items: m.items }, null, 2)}\n` });
+    }
+  }
+
+  // Voz: um só perfil. Em conflito fica o da página; o do computador fica em .anterior.
+  const vozLocal = escrita ? escrita.voice : undefined;
+  const vozRemota = remote.voz?.data ? { amostras: remote.voz.data.amostras || [], perfil: remote.voz.data.perfil || '', confirmado: !!remote.voz.data.confirmado } : undefined;
+  if (vozLocal !== undefined || vozRemota !== undefined) {
+    const v = mergeWhole(vozLocal, vozRemota, base?.voz);
+    nextBase.voz = v.value;
+    if (v.conflito && vozLocal !== undefined) {
+      localWrites.push({ file: `${WRITING_FILE}.voz.anterior`, content: `${JSON.stringify(vozLocal, null, 2)}\n` });
+      report.push('  ⚠ Perfil de voz alterado dos dois lados: ficou o da página; o do computador está em escrita/painel.json.voz.anterior.');
+    }
+    if (json(v.value) !== json(vozRemota ?? null)) send.voz = v.value;
+    if (json(v.value) !== json(vozLocal ?? null)) { novaEscrita.voice = v.value; escritaMudou = true; }
+  }
+  if (escritaMudou) localWrites.push({ file: WRITING_FILE, content: `${JSON.stringify({ ...novaEscrita, updatedAt: new Date().toISOString() }, null, 2)}\n` });
+
+  // Objetivos financeiros: texto; o do computador está em financas/objetivos.md.
+  const objLocal = readIf(GOALS_FILE) ?? undefined;
+  const objRemoto = remote.objetivos?.data?.text ? String(remote.objetivos.data.text) : undefined;
+  if (objLocal !== undefined || objRemoto !== undefined) {
+    const o = mergeWhole(objLocal, objRemoto, base?.objetivos);
+    nextBase.objetivos = o.value;
+    if (o.conflito && objLocal !== undefined) {
+      localWrites.push({ file: `${GOALS_FILE}.anterior`, content: objLocal });
+      report.push('  ⚠ Objetivos financeiros alterados dos dois lados: ficaram os da página; os do computador estão em financas/objetivos.md.anterior.');
+    }
+    if (o.value !== objRemoto) send.objetivos = { text: o.value };
+    if (o.value !== objLocal) localWrites.push({ file: GOALS_FILE, content: o.value });
+    if (o.value !== objLocal || o.value !== objRemoto) resumo.push(`objetivos ${o.value === objLocal ? '↑' : '↓'}`);
+  }
+
+  // Cargos sugeridos: a lista vem inteira de cada vez que o Claude lê o CV.
+  const cargosFile = path.join(ROOT, 'carreira', 'cargos.json');
+  const cargosLocal = readJson(cargosFile)?.items;
+  const cargosRemoto = remote.cargos?.data?.items;
+  if (cargosLocal !== undefined || cargosRemoto !== undefined) {
+    const c = mergeWhole(cargosLocal, cargosRemoto, base?.cargos);
+    nextBase.cargos = c.value;
+    if (json(c.value) !== json(cargosRemoto ?? null)) send.cargos = { items: c.value };
+    if (json(c.value) !== json(cargosLocal ?? null)) localWrites.push({ file: cargosFile, content: `${JSON.stringify({ items: c.value }, null, 2)}\n` });
+    if (json(cargosLocal ?? null) !== json(cargosRemoto ?? null)) resumo.push(`cargos ${c.value === cargosLocal ? '↑' : '↓'}${c.conflito ? ' (diferentes dos dois lados: ficaram os da página)' : ''}`);
+  }
+
+  // Blocos de foco: dia → quantos. Em conflito, fica o maior (nenhum bloco feito se perde).
+  const focoFile = path.join(ROOT, 'rotina', 'foco.json');
+  const focoLocal = readJson(focoFile)?.days;
+  const focoRemoto = remote.foco?.data?.days;
+  if (focoLocal !== undefined || focoRemoto !== undefined) {
+    const L = focoLocal || {};
+    const R = focoRemoto || {};
+    const B = base?.foco || {};
+    const dias = {};
+    for (const d of new Set([...Object.keys(L), ...Object.keys(R)])) {
+      const l = L[d];
+      const r = R[d];
+      const n = l === r ? l : l === B[d] ? r : r === B[d] ? l : Math.max(Number(l) || 0, Number(r) || 0);
+      if (Number(n) > 0) dias[d] = Number(n);
+    }
+    const ordenado = Object.fromEntries(Object.entries(dias).sort(([a], [b]) => a.localeCompare(b)));
+    nextBase.foco = ordenado;
+    if (json(ordenado) !== json(focoRemoto ?? null)) send.foco = { days: ordenado };
+    if (json(ordenado) !== json(focoLocal ?? null)) localWrites.push({ file: focoFile, content: `${JSON.stringify({ days: ordenado }, null, 2)}\n` });
+  }
+
+  if (resumo.length) report.push(`Painel (↑ do computador, ↓ da página): ${resumo.join(' · ')}.`);
   return { report, send, localWrites, nextBase };
 }
 

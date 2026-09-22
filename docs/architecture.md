@@ -145,12 +145,12 @@ Each line is queried **at most once every 20 hours** (`carreira/.procura.json` h
 
 ## 6. Rumo dashboard: one page, two homes
 
-`prototipo/rumo.html` is a single self-contained page (HTML, CSS and JS, no build step). It has tabs for Hoje, Foco, Semana, Mês, Património, Investir, Vagas, Candidaturas, Pensar, Corretor, Escrita and Configurar. The same file runs in two places, and adapts to what each one can do:
+The dashboard is three files in `prototipo/`, with no build step: `rumo.html` (structure), `rumo.css` (styles) and `rumo.js` (logic). The page has no inline scripts and no `on…=` attributes, so the local panel serves it under a Content-Security-Policy that allows scripts only from its own files (plus cdnjs, for the PDF reader); `system.test.mjs` keeps it that way. It has tabs for Hoje, Foco, Semana, Mês, Património, Investir, Vagas, Candidaturas, Pensar, Corretor, Escrita and Configurar. The same file runs in two places, and adapts to what each one can do:
 
 | | claude.ai (published artifact) | local panel (`painel.mjs`) |
 |---|---|---|
 | **data** | the page's private documents (`db`) | the repository's own files, over `127.0.0.1` |
-| **Claude** | the `sample` capability | `claude -p --restricted` on this machine, through `/api/claude` |
+| **Claude** | the `sample` capability | `claude -p --restricted` on this machine, through `/api/claude`; one process is kept started and waiting, and the answer streams back as NDJSON |
 | **internet** | none | yes: job search runs with `WebSearch`/`WebFetch` |
 | **connectors** | Gmail and Google Calendar, through `mcp` | none |
 | **files** | `downloads` (the viewer saves them) | written straight into the repo (`carreira/cv.md`, `carreira/vagas.csv`) |
@@ -231,7 +231,7 @@ sequenceDiagram
 
 ## 8. Tests
 
-`npm test` runs Node's built-in test runner on seven files:
+`npm test` runs Node's built-in test runner on nine files:
 
 | file | covers |
 |---|---|
@@ -241,6 +241,8 @@ sequenceDiagram
 | `cwos.test.mjs` | front matter, validation, timeline, dependencies, mentions, style metrics, `canon-diff` |
 | `painel.test.mjs` | the local panel: token-protected API, reading the personal files atomically with backups, the emails and agenda it serves (metadata only), saving postings to `vagas.csv` without duplicates, the background start/stop cycle, the Content-Security-Policy that allows only the PDF reader, and the usage limits never leaking account data |
 | `atalho.test.mjs` | the generated logo, PNG and ICO structure |
+| `conversar.test.mjs` | the chat answer formatter (headings, lists, code, emphasis, and only `https` links), run on a minimal DOM |
+| `navegador.test.mjs` | the real dashboard in headless Chrome or Edge, driven through the DevTools protocol with Node's built-in WebSocket: it boots without errors under the strict policy, every tab opens its section, arrow keys switch tabs, the `/` menu and career steps work, refresh buttons answer, and a deliberate error proves the error detector listens. Skipped when no browser is installed |
 | `system.test.mjs` | consistency of the instruction layer: skill and agent front matter, required sections, critic agents cannot edit, no command/skill name clashes, every referenced skill, agent and template exists, the startup hook is valid. It also checks the dashboard statically: valid JavaScript, unique ids, every id the script looks up exists, every tab shortcut points at a real tab, and each career step shows sections that exist and belong to it alone |
 
 ## 9. Design decisions

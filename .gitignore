@@ -31,6 +31,13 @@ carreira/perfil.md
 carreira/cv.md
 carreira/fontes.csv
 
+# Dados do painel local (ideias, escrita, conversas, cargos, vagas removidas, foco)
+escrita/painel.json
+carreira/cargos.json
+carreira/vagas-fora.json
+rotina/foco.json
+*.anterior
+
 # Atalho do Windows: tem caminhos deste computador (cria-se com "npm run atalho")
 Rumo.lnk
 rotina/agenda.json

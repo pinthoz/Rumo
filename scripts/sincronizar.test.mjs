@@ -287,3 +287,65 @@ test('CV: só o Markdown viaja, nos dois sentidos, sem perder a versão do compu
   assert.match(read('carreira/cv.md.anterior'), /novo no computador/);
   assert.match(r.out, /⚠ CV alterado dos dois lados/);
 });
+
+test('resto do painel: ideias, conversas, cargos, vagas removidas, foco e objetivos vão e vêm', () => {
+  const antes = root;
+  root = fs.mkdtempSync(path.join(os.tmpdir(), 'sync-extra-'));
+  try {
+    // Computador: uma ideia, uma conversa, dois dias de foco, objetivos e uma vaga removida.
+    write('escrita/painel.json', JSON.stringify({ version: 1, ideas: [{ id: 'i1', title: 'Do computador', updated: '2026-09-20' }], notes: [], drafts: [], errors: [], voice: { amostras: [], perfil: '', confirmado: false } }));
+    write('pensar/conversas/conversar.json', JSON.stringify({ items: [{ id: 'c1', titulo: 'No PC', data: '2026-09-20', turnos: [] }] }));
+    write('rotina/foco.json', JSON.stringify({ days: { '2026-09-20': 2, '2026-09-21': 1 } }));
+    write('financas/objetivos.md', '# Objetivos\n- fundo de emergência\n');
+    write('carreira/vagas-fora.json', JSON.stringify({ items: ['v1'] }));
+    // Página: outra ideia, outra conversa (mais recente), cargos, e mais um bloco no dia 21.
+    const remoto = file('remoto');
+    remoteDoc(remoto, 'ideias', { items: [{ id: 'i2', title: 'Da página', updated: '2026-09-21' }] });
+    remoteDoc(remoto, 'conversas', { items: [{ id: 'c2', titulo: 'No telemóvel', data: '2026-09-22', turnos: [{ role: 'user', content: 'olá' }] }] });
+    remoteDoc(remoto, 'cargos', { items: [{ titulo: 'Data Analyst', porque: 'SQL' }] });
+    remoteDoc(remoto, 'foco', { days: { '2026-09-21': 3 } });
+    remoteDoc(remoto, 'vagas-fora', { items: ['v2'] });
+
+    let r = run('fundir', '--remoto', remoto, '--saida', file('enviar'));
+    assert.equal(r.code, 0, r.out);
+    // Chegou ao computador o que estava na página.
+    assert.deepEqual(JSON.parse(read('escrita/painel.json')).ideas.map((x) => x.id), ['i2', 'i1'], 'mais recente primeiro');
+    assert.deepEqual(JSON.parse(read('pensar/conversas/conversar.json')).items.map((x) => x.id), ['c2', 'c1']);
+    assert.deepEqual(JSON.parse(read('carreira/cargos.json')).items, [{ titulo: 'Data Analyst', porque: 'SQL' }]);
+    assert.deepEqual(JSON.parse(read('rotina/foco.json')).days, { '2026-09-20': 2, '2026-09-21': 3 }, 'em conflito, fica o maior');
+    assert.deepEqual(JSON.parse(read('carreira/vagas-fora.json')).items.sort(), ['v1', 'v2']);
+    // E vai para a página o que estava no computador.
+    const plano = JSON.parse(read('enviar/plano.json')).map((p) => p.doc).sort();
+    for (const doc of ['conversas', 'foco', 'ideias', 'objetivos', 'vagas-fora']) assert.ok(plano.includes(doc), `${doc} devia ir para a página`);
+    assert.ok(!plano.includes('cargos'), 'cargos já estão iguais na página');
+    assert.equal(JSON.parse(read('enviar/objetivos.json')).text, '# Objetivos\n- fundo de emergência\n');
+    assert.equal(run('confirmar').code, 0);
+
+    // Segunda vez: a conversa c1 foi apagada na página → apaga-se no computador.
+    fs.rmSync(remoto, { recursive: true, force: true });
+    remoteDoc(remoto, 'conversas', { items: [{ id: 'c2', titulo: 'No telemóvel', data: '2026-09-22', turnos: [{ role: 'user', content: 'olá' }] }] });
+    for (const doc of ['ideias', 'vagas-fora', 'foco', 'objetivos', 'cargos']) remoteDoc(remoto, doc, JSON.parse(read(`enviar/${doc}.json`.replace('enviar/cargos.json', 'carreira/cargos.json'))));
+    r = run('fundir', '--remoto', remoto, '--saida', file('enviar2'));
+    assert.equal(r.code, 0, r.out);
+    assert.deepEqual(JSON.parse(read('pensar/conversas/conversar.json')).items.map((x) => x.id), ['c2'], 'apagada num lado, apagada no outro');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+    root = antes;
+  }
+});
+
+test('resto do painel: objetivos alterados dos dois lados ficam os da página, com cópia dos do computador', async () => {
+  const { mergeWhole, mergeList } = await import('./sincronizar.mjs');
+  assert.deepEqual(mergeWhole('a', 'b', 'a'), { value: 'b', conflito: false });
+  assert.deepEqual(mergeWhole('c', 'a', 'a'), { value: 'c', conflito: false });
+  assert.deepEqual(mergeWhole('c', 'b', 'a'), { value: 'b', conflito: true });
+  // Listas: o mesmo item mudado dos dois lados → fica o mais recente.
+  const m = mergeList(
+    [{ id: 'x', t: 'pc', updated: '2026-09-22' }],
+    [{ id: 'x', t: 'página', updated: '2026-09-21' }],
+    [{ id: 'x', t: 'base', updated: '2026-09-01' }],
+    { chave: (x) => x.id, max: 10 },
+  );
+  assert.equal(m.items[0].t, 'pc');
+  assert.equal(m.conflicts.length, 1);
+});

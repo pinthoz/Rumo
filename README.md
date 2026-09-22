@@ -24,7 +24,7 @@ escrita/             area CLAUDE.md + projects, templates and docs (creative wri
 .claude/             skills, agents and commands
 scripts/             rotina.mjs · lembretes.mjs · financas.mjs · carreira.mjs · sincronizar.mjs · cwos.mjs (+ tests)
 docs/                user guide, Claude app usage, limitations, setup questions (in Portuguese)
-prototipo/rumo.html  the Rumo dashboard for claude.ai
+prototipo/           the Rumo dashboard: rumo.html · rumo.css · rumo.js
 ```
 
 Each area's `CLAUDE.md` is only loaded when working in that area. This is what keeps the assistant from mixing topics.
@@ -46,7 +46,7 @@ For a local visual interface, run `npm run atalho` once on Windows: it draws the
 
 The local panel does what the published page cannot, because it runs on your machine:
 
-- **Claude without an API key** — the AI-backed tabs ask the Claude Code CLI already installed (`claude -p`, restricted mode), using your subscription.
+- **Claude without an API key** — the AI-backed tabs ask the Claude Code CLI already installed (`claude -p`, restricted mode), using your subscription. A Claude Code process is kept warm, so answers start in about a second and stream in as they are written.
 - **Job search that actually searches** — one click searches public postings (never logging in to LinkedIn) and appends what it finds to `carreira/vagas.csv`, so it is still there next time.
 - **Writes into the repo** — the CV you upload (a PDF is read in the browser; only the text leaves it) is saved to `carreira/cv.md`, with a backup in `.sync/backups/`.
 - **Usage limits** — a small badge, bottom right, showing how much of your Claude quota is left.
@@ -55,7 +55,7 @@ The local panel does what the published page cannot, because it runs on your mac
 
 A claude.ai page with the same areas, for use in the browser or on a phone:
 - `/rumo` publishes it to your own account;
-- `/sincronizar` syncs it both ways with the local files (tasks, money, applications and the CV — only the Markdown, never the original file);
+- `/sincronizar` syncs it both ways with the local files (tasks, money, applications, the CV — only the Markdown, never the original file — and the rest of the dashboard: ideas, writing, conversations, suggested roles, dismissed jobs, reviews and focus blocks);
 - with your Gmail and Google Calendar connectors, the Hoje and Semana tabs show the emails that need an answer and the week's events, read-only.
 
 ## Architecture
