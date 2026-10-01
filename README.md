@@ -42,7 +42,7 @@ npm test
 
 Then, in Claude Code: `/hoje`.
 
-For a local visual interface, run `npm run atalho` once on Windows: it draws the Rumo compass into `prototipo/rumo.ico` and creates a **`Rumo`** shortcut in the project folder that opens the dashboard with no console window. Elsewhere, run `npm run painel`. It opens the same dashboard in the browser, connected only to the personal files in this folder. The server runs in the background, so no terminal window has to stay open: `npm run painel:estado` says whether it is running and `npm run painel:parar` stops it. The **Configurar** area edits routine, career profile, CV, financial goals, glossary, frequent errors and writing voice without needing to find or open Markdown files.
+For a local visual interface, run `npm run atalho` once. On Windows it creates a **`Rumo`** shortcut in the project folder; on a Mac it creates **`Rumo.app`** (drag it to the Dock or Applications). Both carry the Rumo compass icon and open the dashboard with no terminal window. `npm run atalho arranque` starts the dashboard in the background when you log in (Windows Startup folder or a macOS LaunchAgent); `npm run atalho sem-arranque` undoes it. Elsewhere, run `npm run painel`. It opens the same dashboard in the browser, connected only to the personal files in this folder. The server runs in the background, so no terminal window has to stay open: `npm run painel:estado` says whether it is running and `npm run painel:parar` stops it. The **Configurar** area edits routine, career profile, CV, financial goals, glossary, frequent errors and writing voice without needing to find or open Markdown files.
 
 The local panel does what the published page cannot, because it runs on your machine:
 

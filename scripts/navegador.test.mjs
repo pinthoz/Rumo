@@ -52,7 +52,16 @@ before(async () => {
   fs.mkdirSync(path.join(root, 'prototipo'), { recursive: true });
   for (const f of ['rumo.html', 'rumo.css', 'rumo.js']) fs.copyFileSync(path.join(repo, 'prototipo', f), path.join(root, 'prototipo', f));
   const token = 'chave-do-teste-do-navegador';
-  ({ server } = createPanelServer({ root, token }));
+  // O Google de mentira: escreve uma agenda com um evento, sem chamar o Claude nem o Google.
+  const lerGoogleAgora = async (pasta) => {
+    fs.mkdirSync(path.join(pasta, 'rotina'), { recursive: true });
+    const agora = new Date();
+    const inicio = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 10).toISOString();
+    fs.writeFileSync(path.join(pasta, 'rotina', 'agenda.json'), JSON.stringify({ updatedAt: agora.toISOString(), items: [{ id: 'e1', summary: 'Evento de teste', start: inicio, end: inicio }] }));
+    fs.writeFileSync(path.join(pasta, 'rotina', 'emails.json'), JSON.stringify({ updatedAt: agora.toISOString(), items: [] }));
+    return { agenda: 1, emails: 0 };
+  };
+  ({ server } = createPanelServer({ root, token, lerGoogleAgora }));
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   base = `http://127.0.0.1:${server.address().port}`;
 
@@ -196,7 +205,7 @@ test('navegador: os botões de atualizar respondem (não ficam mudos)', { skip: 
     await new Promise((ok) => setTimeout(ok, 900));
     return { agenda, emails: ajuda.textContent };
   })()`);
-  assert.ok(r.agenda.trim(), 'o Atualizar da agenda não disse nada');
+  assert.match(r.agenda, /Agenda atualizada: 1 evento/, 'o Atualizar da agenda tem de ir buscar a agenda nova');
   assert.ok(r.emails.trim(), 'o Atualizar dos emails não disse nada');
   assert.deepEqual(erros, []);
 });

@@ -284,14 +284,15 @@
   .msg .bubble { max-width: 100%; }
   .msg-acoes { display: flex; gap: 4px; opacity: 0; transition: opacity 0.12s ease; }
   .msg:hover .msg-acoes, .msg:focus-within .msg-acoes { opacity: 1; }
-  .bubble h3, .bubble h4 { font-family: var(--font-display); font-size: 0.95rem; margin: 6px 0 2px; }
-  .bubble p { margin: 0 0 6px; }
-  .bubble p:last-child, .bubble ul:last-child, .bubble ol:last-child { margin-bottom: 0; }
-  .bubble ul, .bubble ol { margin: 0 0 6px; padding-left: 1.2em; display: grid; gap: 2px; }
-  .bubble code { font-family: var(--font-mono); font-size: 0.85em; background: color-mix(in srgb, var(--ink) 10%, transparent); padding: 1px 4px; border-radius: 4px; }
-  .bubble pre { margin: 0 0 6px; padding: 9px 11px; border-radius: 8px; background: color-mix(in srgb, var(--ink) 10%, transparent); overflow-x: auto; }
-  .bubble pre code { background: none; padding: 0; }
-  .bubble a { color: inherit; text-decoration: underline; }
+  .bubble h3, .formatado h3, .bubble h4, .formatado h4 { font-family: var(--font-display); font-size: 0.95rem; margin: 6px 0 2px; }
+  .bubble p, .formatado p { margin: 0 0 6px; }
+  .bubble p:last-child, .formatado p:last-child, .bubble ul:last-child, .formatado ul:last-child, .bubble ol:last-child, .formatado ol:last-child { margin-bottom: 0; }
+  .bubble ul, .formatado ul, .bubble ol, .formatado ol { margin: 0 0 6px; padding-left: 1.2em; display: grid; gap: 2px; }
+  .bubble code, .formatado code { font-family: var(--font-mono); font-size: 0.85em; background: color-mix(in srgb, var(--ink) 10%, transparent); padding: 1px 4px; border-radius: 4px; }
+  .bubble pre, .formatado pre { margin: 0 0 6px; padding: 9px 11px; border-radius: 8px; background: color-mix(in srgb, var(--ink) 10%, transparent); overflow-x: auto; }
+  .bubble pre code, .formatado pre code { background: none; padding: 0; }
+  .bubble a, .formatado a { color: inherit; text-decoration: underline; }
+  .result.formatado { white-space: normal; }
   @media (max-width: 800px) {
     .talk { grid-template-columns: 1fr; }
     .talk-side { position: static; max-height: 180px; }

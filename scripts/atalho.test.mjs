@@ -1,7 +1,7 @@
 // Testes do ícone e do atalho do Rumo. Executar: npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { drawLogo, png, ico } from './atalho.mjs';
+import { drawLogo, png, ico, icns, planoMac, MAC_LABEL } from './atalho.mjs';
 
 test('logótipo: disco, agulha laranja e ponto branco ao centro', () => {
   const size = 64;
@@ -34,4 +34,41 @@ test('ico: uma entrada por tamanho, com deslocamentos que batem certo', () => {
     assert.ok(off + size <= buf.length, 'a imagem cabe no ficheiro');
     assert.equal(buf[off], 0x89, 'cada entrada é um PNG');
   }
+});
+
+test('icns (Mac): cabeçalho, tamanho total e um PNG por entrada', () => {
+  const buf = icns([['ic07', 128], ['ic08', 256]]);
+  assert.equal(buf.toString('ascii', 0, 4), 'icns');
+  assert.equal(buf.readUInt32BE(4), buf.length, 'o tamanho declarado é o do ficheiro');
+  let at = 8;
+  for (const tipo of ['ic07', 'ic08']) {
+    assert.equal(buf.toString('ascii', at, at + 4), tipo);
+    assert.equal(buf[at + 8], 0x89, 'cada entrada é um PNG');
+    at += buf.readUInt32BE(at + 4);
+  }
+  assert.equal(at, buf.length, 'as entradas ocupam o ficheiro todo');
+});
+
+test('Mac: a app abre o painel com o node e o caminho completos', () => {
+  const passos = planoMac('criar', { root: '/Users/ana/Rumo', home: '/Users/ana', node: '/opt/homebrew/bin/node', uid: 501 });
+  const script = passos.find((p) => /[\\/]MacOS[\\/]Rumo$/.test(p.write || ''));
+  assert.equal(script.mode, 0o755, 'executável');
+  assert.match(script.content, /^#!\/bin\/sh/);
+  assert.match(script.content, /'\/opt\/homebrew\/bin\/node' '[^']*painel\.mjs' abrir/);
+  const info = passos.find((p) => /Info\.plist$/.test(p.write || ''));
+  assert.match(info.content, /<key>CFBundleExecutable<\/key><string>Rumo<\/string>/);
+  assert.match(info.content, /<key>CFBundleIconFile<\/key><string>rumo<\/string>/);
+  assert.ok(passos.some((p) => /rumo\.icns$/.test(p.write || '')), 'leva o ícone');
+});
+
+test('Mac: o arranque usa um LaunchAgent que liga o painel sem abrir o navegador', () => {
+  const passos = planoMac('arranque', { root: '/Users/ana/Rumo', home: '/Users/ana', node: '/usr/local/bin/node', uid: 501 });
+  const plist = passos.find((p) => p.write);
+  assert.match(plist.write.replace(/\\/g, '/'), /\/Users\/ana\/Library\/LaunchAgents\/pt\.rumo\.painel\.plist$/);
+  assert.match(plist.content, new RegExp(`<string>${MAC_LABEL}</string>`));
+  assert.match(plist.content, /<string>servir<\/string><string>--no-open<\/string>/);
+  assert.match(plist.content, /<key>RunAtLoad<\/key><true\/>/);
+  assert.deepEqual(passos.at(-1), { cmd: 'launchctl', args: ['bootstrap', 'gui/501', plist.write] });
+  const desfazer = planoMac('sem-arranque', { root: '/Users/ana/Rumo', home: '/Users/ana', uid: 501 });
+  assert.ok(desfazer.some((p) => p.remove === plist.write), 'sem-arranque apaga o mesmo ficheiro');
 });

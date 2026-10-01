@@ -41,3 +41,6 @@ rotina/foco.json
 # Atalho do Windows: tem caminhos deste computador (cria-se com "npm run atalho")
 Rumo.lnk
 rotina/agenda.json
+
+# App do Mac: tem caminhos deste computador (cria-se com "npm run atalho")
+Rumo.app/

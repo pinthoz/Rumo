@@ -59,8 +59,8 @@ Tarefas mecânicas fazem-se com scripts (Node, sem dependências), a partir da r
 | `node scripts/lembretes.mjs` | Rotina | `instalar`, `remover`, `estado`, `testar` (notificações agendadas, Windows e Mac) |
 | `node scripts/financas.mjs` | Finanças | `importar extrato.csv`, `categorizar`, `resumo 2026-09`, `recorrentes`, `patrimonio` |
 | `node scripts/carreira.mjs` | Carreira | `procurar`, `novas`, `guardar <id>`, `adicionar`, `mudar <id> <estado>`, `lista`, `resumo`, `agenda` |
-| `node scripts/painel.mjs` | Todas | `abrir` (padrão: arranca em segundo plano, sem janela, e abre no navegador), `parar`, `estado`, `servir` (primeiro plano, para ver erros). As funções com IA do painel local passam pelo `claude -p` em modo restrito, com um processo já arrancado à espera e a resposta enviada aos bocados |
-| `node scripts/atalho.mjs` | Todas | `criar` (padrão), `remover`: atalho "Rumo" no Windows, com o logótipo (o `Rumo.lnk` não vai para o git) |
+| `node scripts/painel.mjs` | Todas | `abrir` (padrão: arranca em segundo plano, sem janela, e abre no navegador), `parar`, `estado`, `servir` (primeiro plano, para ver erros). As funções com IA do painel local passam pelo `claude -p` em modo restrito, com um processo já arrancado à espera e a resposta enviada aos bocados. A agenda e os emails atualizam-se sozinhos (Google Calendar e Gmail, só leitura) |
+| `node scripts/atalho.mjs` | Todas | `criar` (padrão), `remover`: atalho "Rumo" com o logótipo: `Rumo.lnk` no Windows, `Rumo.app` no Mac (nenhum vai para o git); `arranque` / `sem-arranque`: ligar o painel sozinho ao entrar no sistema (Windows ou Mac) |
 | `node scripts/sincronizar.mjs` | Todas | `fundir`, `confirmar`, `estado` (usado pelo `/sincronizar`) |
 | `node scripts/cwos.mjs` | Escrita | `style texto.md`, `cliches texto.md` (textos soltos); `validate`, `context sc-01` (projetos) |
 

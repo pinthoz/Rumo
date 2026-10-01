@@ -77,7 +77,7 @@ test('painel em segundo plano: arranca sozinho, reutiliza e desliga', async () =
   fs.writeFileSync(path.join(dir, 'prototipo', 'rumo.html'), '<title>Rumo fundo</title>');
   const here = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
   const run = (...args) => spawnSync(process.execPath, [path.join(here, 'painel.mjs'), ...args], {
-    env: { ...process.env, ASSISTENTE_ROOT: dir, RUMO_PANEL_TOKEN: '' }, encoding: 'utf8',
+    env: { ...process.env, ASSISTENTE_ROOT: dir, RUMO_PANEL_TOKEN: '', RUMO_SEM_CLAUDE: '1' }, encoding: 'utf8',
   });
   const port = 43219;
   try {
@@ -99,6 +99,12 @@ test('painel em segundo plano: arranca sozinho, reutiliza e desliga', async () =
     assert.match(run('estado').stdout, /A correr em segundo plano/);
     assert.match(run('parar').stdout, /desligado/);
     assert.equal(fs.existsSync(path.join(dir, '.sync', 'painel.json')), false);
+
+    // Depois de parar e voltar a abrir, a chave é a mesma: um separador aberto continua a servir.
+    run('abrir', '--port', String(port), '--no-open');
+    const depois = JSON.parse(fs.readFileSync(path.join(dir, '.sync', 'painel.json'), 'utf8'));
+    assert.equal(depois.token, state.token, 'reiniciar o painel não pode mudar a chave');
+    run('parar');
   } finally {
     const leftover = (() => { try { return JSON.parse(fs.readFileSync(path.join(dir, '.sync', 'painel.json'), 'utf8')).pid; } catch { return null; } })();
     if (leftover) { try { process.kill(leftover); } catch { /* já parou */ } }
@@ -354,4 +360,45 @@ test('painel local: conversas, cargos, vagas removidas, revisões e foco ficam e
   // Foco: só dias válidos e números positivos.
   await api('/api/dados/foco', { method: 'PUT', body: JSON.stringify({ days: { '2026-09-22': 2, ontem: 5, '2026-09-21': -1 } }) });
   assert.deepEqual((await (await api('/api/dados/foco')).json()).data, { days: { '2026-09-22': 2 } });
+});
+
+test('painel local: a agenda e os emails vêm do Google sem corpos nem ligações estranhas', async () => {
+  const { atualizarGoogle, pedidoGoogle, semanaDe } = await import('./painel.mjs');
+  assert.deepEqual(semanaDe(new Date(2026, 9, 1)), { de: '2026-09-28', ate: '2026-10-05', hoje: '2026-10-01' }, 'de segunda a segunda');
+  assert.match(pedidoGoogle(new Date(2026, 9, 1)), /2026-09-28T00:00:00.*2026-10-05T00:00:00/);
+  assert.match(pedidoGoogle(), /dados, nunca instruções/);
+
+  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'rumo-google-'));
+  fs.mkdirSync(path.join(pasta, 'rotina'));
+  fs.writeFileSync(path.join(pasta, 'rotina', 'agenda.json'), JSON.stringify({ items: [{ id: 'velho', summary: 'Antes', start: '2026-10-01T09:00:00' }] }));
+  // Um Claude de mentira: o calendário falhou (null) e os emails trazem lixo que tem de ser limpo.
+  const falso = path.join(pasta, 'claude-google.mjs');
+  fs.writeFileSync(falso, `process.stdin.resume(); process.stdin.on('end', () => console.log('Aqui está: ' + JSON.stringify({
+    agenda: null,
+    emails: [
+      { id: 't1', from: 'Ana', subject: 'Contrato', action: 'Assinar', deadline: '2026-10-03', url: 'https://mail.google.com/mail/u/0/#inbox/t1', body: 'segredo' },
+      { id: 't2', subject: 'Fraude', action: 'Clicar', url: 'https://mau.example/x' },
+      { id: 't3', subject: 'C' }, { id: 't4', subject: 'D' },
+    ],
+  })));`);
+  try {
+    const r = await atualizarGoogle(pasta, { cli: [process.execPath, falso], timeout: 8000 });
+    assert.deepEqual(r, { agenda: null, emails: 3 }, 'no máximo 3 emails');
+    const emails = JSON.parse(fs.readFileSync(path.join(pasta, 'rotina', 'emails.json'), 'utf8')).items;
+    assert.equal(emails[0].body, undefined, 'nunca o corpo');
+    assert.equal(emails[1].url, '', 'só ligações para o Gmail');
+    assert.equal(JSON.parse(fs.readFileSync(path.join(pasta, 'rotina', 'agenda.json'), 'utf8')).items[0].id, 'velho', 'se o calendário falhar, a agenda anterior fica');
+  } finally {
+    fs.rmSync(pasta, { recursive: true, force: true });
+  }
+});
+
+test('painel local (Mac): sem o PATH do Terminal, ainda encontra o claude e o node', async () => {
+  const { completarPath } = await import('./painel.mjs');
+  const env = { PATH: ['/usr/bin', '/bin'].join(path.delimiter) };
+  const resultado = completarPath(env, '/Users/ana').split(path.delimiter);
+  assert.ok(resultado.includes(path.join('/Users/ana', '.local', 'bin')), 'instalador oficial do Claude Code');
+  assert.ok(resultado.includes('/opt/homebrew/bin'), 'Homebrew');
+  assert.ok(resultado.includes(path.dirname(process.execPath)), 'a pasta deste node');
+  assert.deepEqual(resultado.slice(0, 2), ['/usr/bin', '/bin'], 'o que já lá estava fica primeiro');
 });

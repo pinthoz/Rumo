@@ -7,8 +7,8 @@ Serve para ajudar o utilizador a **fazer menos coisas de cada vez e a acabá-las
 |---|---|
 | `rotina/tarefas.md` | todas as tarefas (caixa de entrada, tarefas, algum dia). Formato no topo do ficheiro. Fica fora do git; os scripts criam-no a partir de `tarefas.modelo.md` se faltar |
 | `rotina/rotina.md` | a rotina-base que o utilizador escolheu (horários, blocos, hábitos). Fora do git; se faltar, copia `rotina.modelo.md` |
-| `rotina/emails.json` | cache local, gerada pelo `/hoje`, com no máximo 3 emails acionáveis para o painel; só metadados, ação e ligação, nunca o corpo |
-| `rotina/agenda.json` | cache local, gerada pelo `/hoje`, com os eventos da semana atual (segunda a domingo) para o painel; só título, horas, local e ligação, nunca convidados nem descrições |
+| `rotina/emails.json` | cache local, gerada pelo `/hoje` e pelo painel local (ao abrir, de 30 em 30 min e no Atualizar), com no máximo 3 emails acionáveis para o painel; só metadados, ação e ligação, nunca o corpo |
+| `rotina/agenda.json` | cache local, gerada pelo `/hoje` e pelo painel local (ao abrir, de 30 em 30 min e no Atualizar), com os eventos da semana atual (segunda a domingo) para o painel; só título, horas, local e ligação, nunca convidados nem descrições |
 | `rotina/revisoes/AAAA-Www.md` | revisões semanais |
 
 **Lembretes automáticos:** `node scripts/lembretes.mjs instalar|remover|estado|testar` (comando `/lembretes`). São notificações do sistema (Windows e Mac) geradas por script, em horas fixas: manhã, prazo, tarde e semana.

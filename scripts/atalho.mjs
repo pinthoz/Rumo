@@ -6,7 +6,10 @@
  * anel e agulha) e gravado em prototipo/rumo.ico. O atalho em si (Rumo.lnk) tem
  * caminhos deste computador, por isso não vai para o git: gera-se com este script.
  *
- * Zero dependências (Node >= 18). Uso: node scripts/atalho.mjs [criar|remover]
+ * `arranque` põe o painel a arrancar sozinho quando se entra no Windows (sem abrir o navegador);
+ * `sem-arranque` desfaz isso.
+ *
+ * Zero dependências (Node >= 18). Uso: node scripts/atalho.mjs [criar|remover|arranque|sem-arranque]
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,6 +21,9 @@ const ROOT = path.resolve(process.env.ASSISTENTE_ROOT || path.join(path.dirname(
 const ICO = path.join(ROOT, 'prototipo', 'rumo.ico');
 const LNK = path.join(ROOT, 'Rumo.lnk');
 const VBS = path.join(ROOT, 'scripts', 'abrir.vbs');
+// O arranque com o Windows liga o painel sem abrir o navegador: fica pronto para quando o abrires.
+const VBS_ARRANQUE = path.join(ROOT, 'scripts', 'arranque.vbs');
+const STARTUP = path.join(process.env.APPDATA || '', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup', 'Rumo.lnk');
 const SIZES = [256, 128, 64, 48, 32, 16];
 
 // Cores do painel: fundo escuro da marca, anel claro e agulha no laranja do Rumo.
@@ -122,32 +128,149 @@ export function ico(sizes = SIZES) {
   return Buffer.concat([header, ...images.map((x) => x.data)]);
 }
 
-const VBS_BODY = [
+const vbs = (extra = '') => [
   "' Gerado por scripts/atalho.mjs: abre o Rumo local sem mostrar nenhuma janela.",
   'Set fso = CreateObject("Scripting.FileSystemObject")',
   'raiz = fso.GetParentFolderName(fso.GetParentFolderName(WScript.ScriptFullName))',
   'Set sh = CreateObject("WScript.Shell")',
   'sh.CurrentDirectory = raiz',
-  'sh.Run "cmd /c node scripts\\painel.mjs abrir", 0, False',
+  `sh.Run "cmd /c node scripts\\painel.mjs abrir${extra}", 0, False`,
   '',
 ].join('\r\n');
+const VBS_BODY = vbs();
 
-function createShortcut() {
+function createShortcut(lnk = LNK, script = VBS, descricao = 'Abrir o Rumo no navegador') {
   const ps = [
     '$sh = New-Object -ComObject WScript.Shell',
-    `$lnk = $sh.CreateShortcut(${JSON.stringify(LNK)})`,
+    `$lnk = $sh.CreateShortcut(${JSON.stringify(lnk)})`,
     '$lnk.TargetPath = "$env:SystemRoot\\System32\\wscript.exe"',
-    `$lnk.Arguments = '"${VBS}"'`,
+    `$lnk.Arguments = '"${script}"'`,
     `$lnk.WorkingDirectory = ${JSON.stringify(ROOT)}`,
     `$lnk.IconLocation = ${JSON.stringify(`${ICO},0`)}`,
-    '$lnk.Description = "Abrir o Rumo no navegador"',
+    `$lnk.Description = ${JSON.stringify(descricao)}`,
     '$lnk.Save()',
   ].join('; ');
   execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], { stdio: 'pipe' });
 }
 
+// ---------------------------------------------------------------- Mac
+
+/** ICNS com PNG por dentro (o formato que o macOS usa desde o 10.7): 128, 256, 512 e 1024 px. */
+export function icns(tipos = [['ic07', 128], ['ic08', 256], ['ic09', 512], ['ic10', 1024]]) {
+  const entradas = tipos.map(([tipo, s]) => {
+    const data = png(s);
+    const cab = Buffer.alloc(8);
+    cab.write(tipo, 0, 'ascii');
+    cab.writeUInt32BE(data.length + 8, 4);
+    return Buffer.concat([cab, data]);
+  });
+  const corpo = Buffer.concat(entradas);
+  const cab = Buffer.alloc(8);
+  cab.write('icns', 0, 'ascii');
+  cab.writeUInt32BE(corpo.length + 8, 4);
+  return Buffer.concat([cab, corpo]);
+}
+
+const xml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const sh = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
+export const MAC_LABEL = 'pt.rumo.painel';
+
+/**
+ * O que fazer no Mac, como uma lista de passos (escrever, apagar, correr), para se poder
+ * verificar sem estar num Mac.
+ * - `criar`: Rumo.app na pasta do projeto, com o logótipo; abre o painel sem Terminal.
+ * - `arranque`: um LaunchAgent liga o painel ao entrar no Mac, sem abrir o navegador.
+ * O node vai com o caminho completo: as apps e o launchd não veem o PATH do Terminal.
+ */
+export function planoMac(acao, { root = ROOT, home = process.env.HOME || '', node = process.execPath, uid = typeof process.getuid === 'function' ? process.getuid() : 501 } = {}) {
+  const app = path.join(root, 'Rumo.app');
+  const agente = path.join(home, 'Library', 'LaunchAgents', `${MAC_LABEL}.plist`);
+  const painel = path.join(root, 'scripts', 'painel.mjs');
+  if (acao === 'remover') return [{ remove: app }];
+  if (acao === 'sem-arranque') {
+    return [{ cmd: 'launchctl', args: ['bootout', `gui/${uid}`, agente], optional: true }, { remove: agente }];
+  }
+  if (acao === 'arranque') {
+    const plist = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>${MAC_LABEL}</string>
+  <key>ProgramArguments</key><array><string>${xml(node)}</string><string>${xml(painel)}</string><string>servir</string><string>--no-open</string></array>
+  <key>WorkingDirectory</key><string>${xml(root)}</string>
+  <key>RunAtLoad</key><true/>
+  <key>StandardErrorPath</key><string>${xml(path.join(root, '.sync', 'painel-arranque.log'))}</string>
+</dict>
+</plist>
+`;
+    return [
+      { cmd: 'launchctl', args: ['bootout', `gui/${uid}`, agente], optional: true },
+      { write: agente, content: plist },
+      { cmd: 'launchctl', args: ['bootstrap', `gui/${uid}`, agente] },
+    ];
+  }
+  const info = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key><string>Rumo</string>
+  <key>CFBundleDisplayName</key><string>Rumo</string>
+  <key>CFBundleIdentifier</key><string>${MAC_LABEL}.app</string>
+  <key>CFBundleExecutable</key><string>Rumo</string>
+  <key>CFBundleIconFile</key><string>rumo</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleVersion</key><string>1</string>
+  <key>LSUIElement</key><true/>
+</dict>
+</plist>
+`;
+  const script = [
+    '#!/bin/sh',
+    '# Gerado por scripts/atalho.mjs: abre o Rumo local no navegador, sem Terminal.',
+    `cd ${sh(root)} && exec ${sh(node)} ${sh(painel)} abrir`,
+    '',
+  ].join('\n');
+  return [
+    { remove: app },
+    { write: path.join(app, 'Contents', 'Info.plist'), content: info },
+    { write: path.join(app, 'Contents', 'MacOS', 'Rumo'), content: script, mode: 0o755 },
+    { write: path.join(app, 'Contents', 'Resources', 'rumo.icns'), content: icns() },
+  ];
+}
+
+function executarMac(passos) {
+  for (const p of passos) {
+    if (p.remove) fs.rmSync(p.remove, { recursive: true, force: true });
+    else if (p.write) {
+      fs.mkdirSync(path.dirname(p.write), { recursive: true });
+      fs.writeFileSync(p.write, p.content, p.mode ? { mode: p.mode } : undefined);
+      if (p.mode) fs.chmodSync(p.write, p.mode);
+    } else {
+      try { execFileSync(p.cmd, p.args, { stdio: 'pipe' }); } catch (e) { if (!p.optional) throw e; }
+    }
+  }
+}
+
+const MENSAGENS_MAC = {
+  criar: 'App "Rumo" criada na pasta do projeto (Rumo.app), com o logótipo. Arrasta-a para a Dock, para as Aplicações ou para a secretária; clica para abrir o painel.',
+  remover: 'App Rumo removida.',
+  arranque: 'O Rumo passa a arrancar sozinho quando entras no Mac, sem abrir o navegador. Para desfazer: npm run atalho sem-arranque',
+  'sem-arranque': 'O Rumo já não arranca sozinho com o Mac.',
+};
+
 export function main(argv = process.argv.slice(2)) {
+  if (process.platform === 'darwin') {
+    const cmd = MENSAGENS_MAC[argv[0]] ? argv[0] : 'criar';
+    executarMac(planoMac(cmd));
+    console.log(MENSAGENS_MAC[cmd]);
+    return;
+  }
   const cmd = argv[0] || 'criar';
+  if (cmd === 'sem-arranque') {
+    fs.rmSync(STARTUP, { force: true });
+    console.log('O Rumo já não arranca sozinho com o Windows.');
+    return;
+  }
   if (cmd === 'remover') {
     fs.rmSync(LNK, { force: true });
     console.log('Atalho removido.');
@@ -157,7 +280,13 @@ export function main(argv = process.argv.slice(2)) {
   fs.writeFileSync(ICO, ico());
   fs.writeFileSync(VBS, VBS_BODY);
   if (process.platform !== 'win32') {
-    console.log(`Ícone gravado em ${path.relative(ROOT, ICO)}. O atalho com ícone só existe no Windows; noutros sistemas usa "npm run painel".`);
+    console.log(`Ícone gravado em ${path.relative(ROOT, ICO)}. O atalho com ícone existe no Windows e no Mac; noutros sistemas usa "npm run painel".`);
+    return;
+  }
+  if (cmd === 'arranque') {
+    fs.writeFileSync(VBS_ARRANQUE, vbs(' --no-open'));
+    createShortcut(STARTUP, VBS_ARRANQUE, 'Ligar o Rumo em segundo plano');
+    console.log('O Rumo passa a arrancar sozinho quando entras no Windows, sem abrir o navegador. Para desfazer: npm run atalho sem-arranque');
     return;
   }
   createShortcut();

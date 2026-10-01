@@ -533,7 +533,10 @@
       await work(ctl.signal);
       note.textContent = "";
     } catch (e) {
-      note.textContent = sampleError(e?.code);
+      // No painel local, os erros chegam sem código mas com o motivo escrito: mostra-o.
+      if (e?.name === "AbortError") note.textContent = "Parado.";
+      else if (LOCAL_TOKEN && e instanceof TypeError && /fetch|network/i.test(e.message)) note.textContent = "O painel local não está a responder. Abre o Rumo outra vez e repete.";
+      else note.textContent = !e?.code && e?.message ? `${e.message.replace(/\.?$/, ".")} Tenta outra vez.` : sampleError(e?.code);
     } finally {
       clearTimeout(paciencia);
       note.classList.remove("thinking");
@@ -932,18 +935,23 @@
       btn.disabled = false;
     }
   }
-  // Com conector, relê o Google Calendar; no painel local, relê o ficheiro que o /hoje deixou.
+  /**
+   * No painel local, o computador vai ao Google (só leitura) e atualiza os ficheiros da agenda
+   * e dos emails; depois a página relê-os. Demora uns 20 s: é o Claude Code a ler os dois.
+   */
+  async function lerGoogleLocal() {
+    await localRequest("/api/google", { method: "POST" });
+    await Promise.all([loadLocalAgenda(), loadLocalEmails()]);
+  }
+  // Com conector, relê o Google Calendar; no painel local, pede ao computador que o leia.
   // O mesmo botão existe no dia (separador Hoje) e na semana (separador Semana).
   function atualizarAgenda(btn, note) {
     if (mcpNs) return fetchAgenda({ btn, note });
     return comSpinner(btn, note, async () => {
-      if (!LOCAL_TOKEN) return "Sem calendário ligado aqui. Corre /hoje no computador para trazer a agenda.";
-      const antes = agendaState.events.length;
-      await loadLocalAgenda();
+      if (!LOCAL_TOKEN) return "Sem calendário ligado aqui. Abre o Rumo no computador ou no claude.ai.";
+      await lerGoogleLocal();
       const n = agendaState.events.length;
-      return n === 0 ? "Sem eventos no ficheiro. Corre /hoje no computador."
-        : n === antes ? `${n} ${n === 1 ? "evento" : "eventos"}, sem alterações. ${agendaNote()}`
-        : `Agenda atualizada: ${n} ${n === 1 ? "evento" : "eventos"}.`;
+      return n === 0 ? "Sem eventos esta semana." : `Agenda atualizada: ${n} ${n === 1 ? "evento" : "eventos"} esta semana.`;
     });
   }
   $("agenda-refresh").addEventListener("click", () => atualizarAgenda($("agenda-refresh"), $("agenda-note")));
@@ -1542,21 +1550,32 @@
         state.finExample ? "ATENÇÃO: estes valores são de EXEMPLO, não da pessoa. Diz isso na resposta." : "",
       ].filter(Boolean).join("\n");
     }
+    // No painel local, o Claude do computador pesquisa na internet; no claude.ai não pode.
+    const comWeb = Boolean(LOCAL_TOKEN);
+    const numeros = comWeb
+      ? [
+        "- Tens pesquisa na internet. Para taxas, rendimentos, escalões, limites ou benefícios fiscais ATUAIS, pesquisa em fontes oficiais ou primárias (Banco de Portugal / Portal do Cliente Bancário, CMVM, IGCP, Portal das Finanças, Diário da República, site do banco ou do emitente).",
+        "- Cada número leva a fonte e a data: [Verificado: fonte, data]. Sem fonte oficial ou primária, não dês o número: escreve [Não verificado] e diz onde confirmar.",
+        "- Prefere a página oficial a notícias ou blogues. Se as fontes discordarem, mostra as duas.",
+      ]
+      : [
+        "- Nunca indiques taxas, rendimentos, escalões, limites ou benefícios fiscais concretos: marca [Não verificado] e diz onde confirmar (Portal do Cliente Bancário do Banco de Portugal, CMVM, IGCP, Portal das Finanças, documento de informação fundamental do produto).",
+      ];
     runAI({ go: $("inv-go"), stop: $("inv-stop"), note: $("inv-note"), work: async (signal) => {
-      $("inv-out").hidden = false; $("inv-result").textContent = "…";
+      $("inv-out").hidden = false; $("inv-result").textContent = comWeb ? "A pesquisar fontes atuais…" : "…";
       await sampleFn([
-        SAFE,
+        comWeb ? SAFE.replace(/Não tens acesso à internet\.[^\n]*/, "Pesquisa antes de afirmar factos atuais e indica sempre a fonte e a data.").replace(/^- Se algo depender de informação atual.*\n?/m, "") : SAFE,
         "PAPEL: educador financeiro para uma pessoa em Portugal. NÃO és consultor: não recomendas produtos concretos nem dás ordens de compra.",
         "- Antes de falar em investir, verifica (com o contexto) o fundo de emergência e dívidas com juros altos, e di-lo se faltar informação.",
-        "- Explica os TIPOS de opção relevantes (por exemplo: depósitos a prazo, certificados de aforro e do Tesouro, PPR, fundos e ETF, ações, obrigações) com risco, liquidez, custos e horizonte, sem valores numéricos atuais.",
-        "- Nunca indiques taxas, rendimentos, escalões, limites ou benefícios fiscais concretos: marca [Não verificado] e diz onde confirmar (Portal do Cliente Bancário do Banco de Portugal, CMVM, IGCP, Portal das Finanças, documento de informação fundamental do produto).",
+        `- Explica os TIPOS de opção relevantes (por exemplo: depósitos a prazo, certificados de aforro e do Tesouro, PPR, fundos e ETF, ações, obrigações) com risco, liquidez, custos e horizonte${comWeb ? "" : ", sem valores numéricos atuais"}.`,
+        ...numeros,
         "- Termina com: perguntas que a pessoa deve fazer ao banco ou ao intermediário, e a nota de que decisões importantes devem ser confirmadas com um profissional certificado (uma frase, sem sermão).",
-        "- Formato: texto simples com títulos curtos e listas com hífen. No máximo 350 palavras.",
+        `- Formato: texto simples com títulos curtos e listas com hífen. No máximo ${comWeb ? 450 : 350} palavras.${comWeb ? " Responde só com o texto final, sem descrever as pesquisas." : ""}`,
         "",
         ctx,
         "",
         `PERGUNTA: ${q.slice(0, 3000)}`,
-      ].join("\n"), opts({ signal, onText: ({ text }) => { $("inv-result").textContent = text; } }));
+      ].join("\n"), opts({ signal, web: comWeb || undefined, onText: ({ text }) => { if (text) formatar(text, $("inv-result")); } }));
     } });
   });
 
@@ -3060,8 +3079,9 @@
   const atualizarEmails = (btn) => comSpinner(btn, $("gmail-help"), async () => {
     if (mcpNs) { await fetchGmail(); return ""; }
     if (LOCAL_TOKEN) {
-      const n = await loadLocalEmails();
-      return n ? `${n} ${n === 1 ? "email por triar" : "emails por triar"}.` : "Sem emails acionáveis. Corre /hoje no computador para atualizar a lista.";
+      await lerGoogleLocal();
+      const n = gmailState.items.length;
+      return n ? `${n} ${n === 1 ? "email por triar" : "emails por triar"}.` : "Sem emails que peçam ação.";
     }
     return "Liga o Gmail ao Claude e executa /hoje. Os emails aparecem aqui um de cada vez.";
   });
@@ -3086,7 +3106,8 @@
       : input.map((t) => (t.role === "assistant" ? `Assistente: ${t.content}` : `Pessoa: ${t.content}`)).join("\n\n"));
     const fn = async (input, options = {}) => {
       options.onText?.({ text: "", delta: "" });
-      const pedido = { prompt: textoDe(input), modelo: MODELOS.find((m) => m.id === modelo)?.cli || "" };
+      // `web`: o Claude do computador pode pesquisar na internet (só WebSearch e WebFetch).
+      const pedido = { prompt: textoDe(input), modelo: MODELOS.find((m) => m.id === modelo)?.cli || "", web: options.web === true };
       if (!options.onText) {
         const data = await localRequest("/api/claude", { method: "POST", body: JSON.stringify(pedido), signal: options.signal });
         return { text: String(data.text || ""), truncated: false };
@@ -3332,6 +3353,11 @@
       if (cfgList[0]) await openCfg(cfgList[0].id);
       await loadLocalEmails();
       await loadLocalAgenda();
+      // O computador atualiza a agenda e os emails de 30 em 30 minutos; a página relê-os
+      // de 5 em 5 e sempre que voltas a este separador, para nunca ficarem para trás.
+      const reler = () => { loadLocalAgenda(); loadLocalEmails().catch(() => {}); };
+      setInterval(reler, 5 * 60 * 1000);
+      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") reler(); });
       await loadLocalFinance();
       await loadLocalWriting();
       await loadLocalDados();
@@ -3410,6 +3436,7 @@
       $("fin-storage").textContent = "Guardado automaticamente em ficheiros na pasta financas/. Antes de cada alteração, a versão anterior fica em .sync/backups/financas/.";
       $("li-search").hidden = false;
       $("li-help").textContent = "«Procurar agora» importa resultados públicos (incluindo LinkedIn) sem usar a tua conta. «Pesquisar no LinkedIn (minha sessão)» abre os mesmos filtros no navegador; se já tiveres sessão iniciada, o LinkedIn reconhece-a, mas o Rumo não lê a conta nem os cookies.";
+      $("inv-banner").textContent = "Aqui, no computador, o Claude pesquisa na internet as taxas e regras atuais e indica a fonte e a data de cada número (demora até um minuto). Confirma sempre na fonte antes de decidir e fala com um profissional certificado antes de decisões importantes.";
       $("cv-download").textContent = "Guardar em carreira/cv.md";
       $("cv-save").textContent = "Guardar";
     } else {
