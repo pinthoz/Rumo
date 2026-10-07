@@ -104,6 +104,19 @@ test('painel em segundo plano: arranca sozinho, reutiliza e desliga', async () =
     run('abrir', '--port', String(port), '--no-open');
     const depois = JSON.parse(fs.readFileSync(path.join(dir, '.sync', 'painel.json'), 'utf8'));
     assert.equal(depois.token, state.token, 'reiniciar o painel não pode mudar a chave');
+
+    // Um painel arrancado antes de o código mudar (git pull) é reiniciado ao abrir o Rumo.
+    const ficheiroEstado = path.join(dir, '.sync', 'painel.json');
+    fs.writeFileSync(ficheiroEstado, JSON.stringify({ ...depois, desde: '2000-01-01T00:00:00.000Z' }));
+    const reaberto = run('abrir', '--port', String(port), '--no-open');
+    assert.match(reaberto.stdout, /A correr em segundo plano/, 'com código mais recente, arranca de novo');
+    const novo = JSON.parse(fs.readFileSync(ficheiroEstado, 'utf8'));
+    assert.notEqual(novo.pid, depois.pid, 'é outro processo');
+    assert.equal(novo.token, state.token, 'e a chave continua a mesma');
+    assert.match(run('abrir', '--port', String(port), '--no-open').stdout, /Já estava a correr/, 'sem mudanças, reaproveita');
+    // Um pedido que este servidor não conhece explica o que fazer.
+    const desconhecido = await (await fetch(`http://127.0.0.1:${port}/api/nao-existe`, { headers: { 'X-Rumo-Token': state.token } })).json();
+    assert.match(desconhecido.error, /desatualizado/);
     run('parar');
   } finally {
     const leftover = (() => { try { return JSON.parse(fs.readFileSync(path.join(dir, '.sync', 'painel.json'), 'utf8')).pid; } catch { return null; } })();

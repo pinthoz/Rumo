@@ -989,7 +989,7 @@ export function createPanelServer({ token = crypto.randomBytes(24).toString('bas
       }
       const match = url.pathname.match(/^\/api\/files\/([a-z-]+)$/);
       const def = match && BY_ID.get(match[1]);
-      if (!def) return json(res, 404, { error: 'Ficheiro desconhecido.' });
+      if (!def) return json(res, 404, { error: match ? 'Ficheiro desconhecido.' : 'O painel não conhece este pedido: deve estar desatualizado. Abre o Rumo pelo atalho (ou a app) para o reiniciar.' });
       if (req.method === 'GET') return json(res, 200, readDef(root, def));
       if (req.method === 'PUT') {
         const body = await bodyOf(req);
@@ -1073,9 +1073,26 @@ function spawnBackground(port, root = ROOT) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** Arranca o painel (se ainda não estiver de pé) e devolve o endereço com a chave. */
+/**
+ * Quando foi alterado, pela última vez, o código do servidor (depois de um `git pull`, por
+ * exemplo). Um painel arrancado antes disso ainda corre o código antigo.
+ */
+export function codigoAlteradoEm(dir = path.dirname(fileURLToPath(import.meta.url))) {
+  return Math.max(...['painel.mjs', 'financas.mjs', 'carreira.mjs'].map((f) => {
+    try { return fs.statSync(path.join(dir, f)).mtimeMs; } catch { return 0; }
+  }));
+}
+
 export async function ensureRunning({ port = DEFAULT_PORT, root = ROOT, wait = 8000 } = {}) {
   const state = readState(root);
-  if (state?.port && await ping(state.port)) return { ...state, started: false };
+  if (state?.port && await ping(state.port)) {
+    const desde = Date.parse(state.desde || '');
+    if (!(desde < codigoAlteradoEm())) return { ...state, started: false };
+    // O código mudou desde que este painel arrancou: reinicia-se, senão a página nova pede
+    // coisas que o servidor antigo não conhece. A chave mantém-se (está em .sync/painel-chave).
+    stopRunning(root);
+    for (let i = 0; i < 25 && await ping(state.port); i++) await sleep(200);
+  }
   // Porta ocupada sem estado nosso: é um painel de outra versão, aberto à mão num terminal.
   if (await ping(port)) throw new Error(`Já está um painel a responder em http://127.0.0.1:${port}. Fecha a janela onde o abriste (ou termina esse processo) e tenta outra vez.`);
   clearState(root);
@@ -1152,7 +1169,7 @@ export async function main(argv = process.argv.slice(2)) {
   if (cmd === 'estado') {
     const state = readState();
     if (state?.port && await ping(state.port)) console.log(`A correr em segundo plano desde ${state.desde}\n${state.url}`);
-    else console.log('Não está a correr. Usa "node scripts/painel.mjs" ou o atalho "Abrir Rumo".');
+    else console.log('Não está a correr. Usa "node scripts/painel.mjs" ou o atalho "Rumo".');
     return;
   }
   if (cmd !== 'abrir') {
