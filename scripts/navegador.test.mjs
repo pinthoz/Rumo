@@ -52,6 +52,9 @@ before(async () => {
   fs.mkdirSync(path.join(root, 'prototipo'), { recursive: true });
   for (const f of ['rumo.html', 'rumo.css', 'rumo.js']) fs.copyFileSync(path.join(repo, 'prototipo', f), path.join(root, 'prototipo', f));
   const token = 'chave-do-teste-do-navegador';
+  // Um CV de exemplo: a área Carreira só mostra os cargos e o «Ajustar CV» quando há CV.
+  fs.mkdirSync(path.join(root, 'carreira'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'carreira', 'cv.md'), '# Ana Exemplo\n\n## Experiência\n### Analista de dados — Empresa X (2024–2026)\n- SQL e Python\n');
   // O Google de mentira: escreve uma agenda com um evento, sem chamar o Claude nem o Google.
   const lerGoogleAgora = async (pasta) => {
     fs.mkdirSync(path.join(pasta, 'rotina'), { recursive: true });
@@ -177,6 +180,28 @@ test('navegador: as etapas da carreira mostram só a sua parte', { skip: sem }, 
   assert.deepEqual(etapas[0], { cv: true, procura: false, quadro: false }, 'Preparar');
   assert.deepEqual(etapas[1], { cv: false, procura: true, quadro: false }, 'Encontrar');
   assert.equal(etapas[2].cv, false, 'Acompanhar não mostra o CV');
+  assert.deepEqual(erros, []);
+});
+
+test('navegador: acrescentar um cargo meu deixa ajustar o CV a ele', { skip: sem }, async () => {
+  const r = await naPagina(`(async () => {
+    document.getElementById('tab-candidaturas').click();
+    document.querySelector('#j-flow [data-step="1"]').click();
+    const visivel = !document.getElementById('cv-roles-wrap').hidden;
+    document.getElementById('cv-role-mine').value = 'Product Analyst';
+    document.getElementById('cv-role-form').requestSubmit();
+    await new Promise((ok) => setTimeout(ok, 400));
+    const linha = [...document.querySelectorAll('#cv-roles li')].find((li) => li.textContent.includes('Product Analyst'));
+    return {
+      visivel,
+      meu: !!linha && linha.textContent.includes('Tu'),
+      ajustar: !!linha && [...linha.querySelectorAll('button')].some((b) => b.textContent === 'Ajustar CV'),
+      filtro: [...document.querySelectorAll('#li-roles button')].some((b) => b.textContent === 'Product Analyst'),
+    };
+  })()`);
+  assert.deepEqual(r, { visivel: true, meu: true, ajustar: true, filtro: true });
+  const guardado = JSON.parse(fs.readFileSync(path.join(root, 'carreira', 'cargos.json'), 'utf8'));
+  assert.deepEqual(guardado.items[0], { titulo: 'Product Analyst', porque: '', origem: 'eu' }, 'fica guardado no computador');
   assert.deepEqual(erros, []);
 });
 

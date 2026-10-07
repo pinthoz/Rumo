@@ -303,6 +303,16 @@
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .chip-pick { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 12px; cursor: pointer; font: inherit; font-size: 0.85rem; }
   .chip-pick:hover { background: var(--surface-2); }
+  /* campo arredondado com o botão lá dentro (ex.: acrescentar um cargo) */
+  .pill-field { display: flex; align-items: center; gap: 6px; margin-top: 10px; padding: 4px 4px 4px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+  .pill-field:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .pill-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .pill-field-icon { color: var(--accent); font-weight: 700; font-size: 1.1rem; line-height: 1; }
+  .pill-field input[type="text"] { flex: 1; border: 0; background: transparent; padding: 8px 4px; border-radius: 999px; font: inherit; color: var(--ink); }
+  .pill-field input[type="text"]:focus-visible { outline: none; }
+  .pill-field input::placeholder { color: var(--muted); }
+  .pill-field .btn { border-radius: 999px; padding: 8px 16px; flex-shrink: 0; }
+  @media (max-width: 420px) { .pill-field .btn { padding: 8px 12px; } }
   .chip-pick[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
 
   /* vagas encontradas: um cartão por vaga, com as ações em baixo */

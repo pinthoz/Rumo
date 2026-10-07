@@ -9,6 +9,8 @@ A organização (avaliação por requisitos, lista única de candidaturas, verif
 |---|---|
 | `carreira/perfil.md` | cargos que procura, onde, salário mínimo, o que é obrigatório e o que não quer (criado a partir de `perfil.modelo.md`, preenchido com o utilizador) |
 | `carreira/cv.md` | o CV em Markdown (criado a partir de `cv.modelo.md`, ou do ficheiro do utilizador com `/cv`); é a única fonte sobre a experiência do utilizador. Só este Markdown é sincronizado com o painel: o PDF ou o Word originais nunca são copiados nem enviados |
+| `carreira/cargos.json` | cargos a procurar: os sugeridos a partir do CV e os que o utilizador acrescentou (`origem: "eu"`) |
+| `carreira/cvs/` | versões do CV ajustadas a um cargo ou a uma vaga (`cv-<cargo>.md`), feitas no painel só com o que está em `cv.md`; nunca substituem o `cv.md` |
 | `carreira/fontes.csv` | onde procurar (`fonte;alvo;nome;palavras;local`), criado a partir de `fontes.modelo.csv` |
 | `carreira/candidaturas.csv` | uma linha por candidatura (`id;empresa;cargo;local;estado;nota;data;proximo;fonte;link;obs`) |
 | `carreira/vagas.csv` | todas as vagas que a procura já encontrou, para não as mostrar duas vezes |

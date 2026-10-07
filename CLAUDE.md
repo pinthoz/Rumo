@@ -61,6 +61,7 @@ Tarefas mecânicas fazem-se com scripts (Node, sem dependências), a partir da r
 | `node scripts/carreira.mjs` | Carreira | `procurar`, `novas`, `guardar <id>`, `adicionar`, `mudar <id> <estado>`, `lista`, `resumo`, `agenda` |
 | `node scripts/painel.mjs` | Todas | `abrir` (padrão: arranca em segundo plano, sem janela, e abre no navegador), `parar`, `estado`, `servir` (primeiro plano, para ver erros). As funções com IA do painel local passam pelo `claude -p` em modo restrito, com um processo já arrancado à espera e a resposta enviada aos bocados. A agenda e os emails atualizam-se sozinhos (Google Calendar e Gmail, só leitura) |
 | `node scripts/atalho.mjs` | Todas | `criar` (padrão), `remover`: atalho "Rumo" com o logótipo: `Rumo.lnk` no Windows, `Rumo.app` no Mac (nenhum vai para o git); `arranque` / `sem-arranque`: ligar o painel sozinho ao entrar no sistema (Windows ou Mac) |
+| `node scripts/verificar.mjs` | Todas | `npm run verificar`: confirma num computador novo (Mac ou Windows) que tudo funciona, das notificações ao Claude e ao Google; `--rapido` salta os testes e as chamadas ao Claude. Relatório em `.sync/verificacao.txt` |
 | `node scripts/sincronizar.mjs` | Todas | `fundir`, `confirmar`, `estado` (usado pelo `/sincronizar`) |
 | `node scripts/cwos.mjs` | Escrita | `style texto.md`, `cliches texto.md` (textos soltos); `validate`, `context sc-01` (projetos) |
 

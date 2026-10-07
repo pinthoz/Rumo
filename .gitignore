@@ -44,3 +44,6 @@ rotina/agenda.json
 
 # App do Mac: tem caminhos deste computador (cria-se com "npm run atalho")
 Rumo.app/
+
+# Versões do CV ajustadas a um cargo (painel)
+carreira/cvs/

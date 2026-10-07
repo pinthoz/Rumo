@@ -591,11 +591,25 @@ export function writeWriting(body, root = ROOT) {
  */
 export const DADOS_PAINEL = {
   conversas: { file: 'pensar/conversas/conversar.json', lista: 'items', max: 30 },
-  cargos: { file: 'carreira/cargos.json', lista: 'items', max: 6 },
+  cargos: { file: 'carreira/cargos.json', lista: 'items', max: 20 },
   'vagas-fora': { file: 'carreira/vagas-fora.json', lista: 'items', max: 2000 },
   revisoes: { file: 'rotina/revisoes/painel.json', lista: 'items', max: 52 },
   foco: { file: 'rotina/foco.json', mapa: 'days' },
 };
+
+/**
+ * Uma versão do CV ajustada a um cargo: carreira/cvs/cv-<cargo>.md (fora do git). O cv.md
+ * continua a ser o único CV de referência; estas versões nunca o substituem.
+ */
+export function guardarVersaoCv({ cargo, markdown } = {}, root = ROOT) {
+  const texto = String(markdown || '').trim();
+  if (!texto) throw new Error('O CV ajustado está vazio.');
+  const nome = String(cargo || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'cargo';
+  const rel = path.posix.join('carreira', 'cvs', `cv-${nome}.md`);
+  escreverComCopia(root, path.join(root, rel), `${texto.slice(0, 60000)}\n`, path.join('carreira', 'cvs', nome), '.md');
+  return rel;
+}
 
 /** Só a forma esperada: uma lista (com limite) ou um mapa dia → número. */
 export function limparDados(parte, body = {}) {
@@ -832,6 +846,14 @@ export function createPanelServer({ token = crypto.randomBytes(24).toString('bas
         const body = await bodyOf(req);
         const changed = writeWriting(body, root);
         return json(res, 200, { ok: true, changed });
+      }
+      if (url.pathname === '/api/cv-versao' && req.method === 'POST') {
+        const body = await bodyOf(req);
+        try {
+          return json(res, 200, { ok: true, file: guardarVersaoCv(body, root) });
+        } catch (e) {
+          return json(res, 400, { error: e.message });
+        }
       }
       const dadosMatch = url.pathname.match(/^\/api\/dados\/([a-z-]+)$/);
       if (dadosMatch && !DADOS_PAINEL[dadosMatch[1]]) return json(res, 404, { error: 'Dados desconhecidos.' });

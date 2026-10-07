@@ -402,3 +402,17 @@ test('painel local (Mac): sem o PATH do Terminal, ainda encontra o claude e o no
   assert.ok(resultado.includes(path.dirname(process.execPath)), 'a pasta deste node');
   assert.deepEqual(resultado.slice(0, 2), ['/usr/bin', '/bin'], 'o que já lá estava fica primeiro');
 });
+
+test('painel local: a versão do CV ajustada a um cargo fica à parte, sem tocar no cv.md', async () => {
+  fs.mkdirSync(path.join(root, 'carreira'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'carreira', 'cv.md'), '# CV original\n');
+  let res = await api('/api/cv-versao', { method: 'POST', body: JSON.stringify({ cargo: 'Product Analyst (Júnior)', markdown: '# CV para PA\n' }) });
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).file, 'carreira/cvs/cv-product-analyst-junior.md');
+  assert.equal(fs.readFileSync(path.join(root, 'carreira', 'cvs', 'cv-product-analyst-junior.md'), 'utf8'), '# CV para PA\n');
+  assert.equal(fs.readFileSync(path.join(root, 'carreira', 'cv.md'), 'utf8'), '# CV original\n', 'o original não muda');
+  // Um nome de cargo com caminhos não sai da pasta.
+  res = await api('/api/cv-versao', { method: 'POST', body: JSON.stringify({ cargo: '../../segredo', markdown: 'x' }) });
+  assert.equal((await res.json()).file, 'carreira/cvs/cv-segredo.md');
+  assert.equal((await api('/api/cv-versao', { method: 'POST', body: JSON.stringify({ cargo: 'X', markdown: '  ' }) })).status, 400);
+});

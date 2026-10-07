@@ -489,6 +489,30 @@
         <button class="btn" id="v-apply-done" type="button">Já me candidatei</button>
         <span class="note" id="v-apply-note"></span>
       </div>
+      <div class="section">
+        <h3>CV para esta vaga</h3>
+        <label class="label" for="v-cv-anuncio">Anúncio da vaga (recomendado)</label>
+        <textarea id="v-cv-anuncio" placeholder="Cola aqui o texto do anúncio: requisitos, responsabilidades… Sem ele, o ajuste é feito só pelo título."></textarea>
+        <div class="row">
+          <button class="btn accent" id="v-cv-go" type="button">Ajustar CV a esta vaga</button>
+          <span class="note" id="v-cv-hint"></span>
+        </div>
+      </div>
+      <div class="section" id="v-cv" hidden>
+        <div class="row between">
+          <h3 id="v-cv-title">CV ajustado</h3>
+          <button class="btn small ghost" id="v-cv-close" type="button">Fechar</button>
+        </div>
+        <p class="muted small">Só reorganiza e reescreve o que está no teu CV. O teu CV original não muda.</p>
+        <div class="result formatado" id="v-cv-text"></div>
+        <div class="formatado" id="v-cv-notes"></div>
+        <div class="row">
+          <button class="btn accent" id="v-cv-save" type="button">Guardar esta versão</button>
+          <button class="btn" id="v-cv-copy" type="button">Copiar</button>
+          <button class="btn" id="v-cv-stop" type="button" hidden>Parar</button>
+          <span class="note" id="v-cv-note"></span>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -579,9 +603,30 @@
           <h3>Cargos a que te podes candidatar</h3>
           <button class="btn small ghost" id="cv-roles-go" type="button">Sugerir de novo</button>
         </div>
-        <p class="muted small">Tirados do teu CV. Escolhes quais queres procurar no passo Encontrar.</p>
+        <p class="muted small">Os sugeridos vêm do teu CV; podes acrescentar os que queres tentar. Em cada um, «Ajustar CV» prepara uma versão do CV para esse cargo, só com o que já lá está.</p>
         <ul class="task-list" id="cv-roles"></ul>
+        <form class="pill-field" id="cv-role-form">
+          <label class="sr" for="cv-role-mine">Um cargo que queres tentar</label>
+          <span class="pill-field-icon" aria-hidden="true">+</span>
+          <input type="text" id="cv-role-mine" maxlength="80" placeholder="Quero tentar… (ex.: Product Analyst)" autocomplete="off">
+          <button class="btn accent" type="submit">Acrescentar</button>
+        </form>
         <p class="note" id="cv-roles-note"></p>
+      </div>
+      <div class="section" id="cv-adapt" hidden>
+        <div class="row between">
+          <h3 id="cv-adapt-title">CV ajustado</h3>
+          <button class="btn small ghost" id="cv-adapt-close" type="button">Fechar</button>
+        </div>
+        <p class="muted small">Só reorganiza e reescreve o que está no teu CV. O teu CV original não muda.</p>
+        <div class="result formatado" id="cv-adapt-text"></div>
+        <div class="formatado" id="cv-adapt-notes"></div>
+        <div class="row">
+          <button class="btn accent" id="cv-adapt-save" type="button">Guardar esta versão</button>
+          <button class="btn" id="cv-adapt-copy" type="button">Copiar</button>
+          <button class="btn" id="cv-adapt-stop" type="button" hidden>Parar</button>
+          <span class="note" id="cv-adapt-note"></span>
+        </div>
       </div>
       <div class="section" id="cv-out" hidden>
         <h3>Resultado</h3>

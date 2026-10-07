@@ -13,6 +13,7 @@
     "sincronizar": "node scripts/sincronizar.mjs",
     "painel": "node scripts/painel.mjs abrir",
     "atalho": "node scripts/atalho.mjs",
+    "verificar": "node scripts/verificar.mjs",
     "painel:parar": "node scripts/painel.mjs parar",
     "painel:estado": "node scripts/painel.mjs estado",
     "cwos": "node scripts/cwos.mjs",

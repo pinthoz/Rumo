@@ -18,7 +18,8 @@ const run = (...args) => {
   return { code: r.status, out: r.stdout + r.stderr };
 };
 const proj = (...p) => path.join(root, 'escrita', 'projetos', 't', ...p);
-const edit = (rel, fn) => fs.writeFileSync(proj(rel), fn(fs.readFileSync(proj(rel), 'utf8')));
+// No Windows o git pode pôr os modelos com CRLF: os testes editam sempre com LF.
+const edit = (rel, fn) => fs.writeFileSync(proj(rel), fn(fs.readFileSync(proj(rel), 'utf8').replace(/\r\n/g, '\n')));
 
 before(() => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), 'cwos-'));
