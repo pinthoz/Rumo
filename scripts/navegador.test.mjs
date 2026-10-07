@@ -205,6 +205,33 @@ test('navegador: acrescentar um cargo meu deixa ajustar o CV a ele', { skip: sem
   assert.deepEqual(erros, []);
 });
 
+test('navegador: no Conversar, o Claude pode pesquisar e decide quando', { skip: sem }, async () => {
+  // O pedido ao Claude é apanhado aqui (com uma resposta de mentira): só se vê o que a página envia.
+  const r = await naPagina(`(async () => {
+    const original = window.fetch;
+    let enviado = null;
+    window.fetch = async (url, o) => {
+      if (String(url).includes('/api/claude')) {
+        enviado = JSON.parse(o.body);
+        return new Response(JSON.stringify({ delta: 'Notícias de teste.' }) + '\\n' + JSON.stringify({ text: 'Notícias de teste.' }) + '\\n', { headers: { 'Content-Type': 'application/x-ndjson' } });
+      }
+      return original(url, o);
+    };
+    try {
+      document.getElementById('tab-conversar').click();
+      document.getElementById('talk-in').value = 'quais são as notícias de hoje?';
+      document.getElementById('talk-go').click();
+      await new Promise((ok) => setTimeout(ok, 600));
+      const bolhas = [...document.querySelectorAll('#talk-chat .bubble')].map((b) => b.textContent);
+      return { web: enviado?.web, regra: /Usa-a sempre que a resposta dependa de informação atual/.test(enviado?.prompt || ''), resposta: bolhas.at(-1) };
+    } finally { window.fetch = original; }
+  })()`);
+  assert.equal(r.web, true, 'a pesquisa vai sempre disponível no painel local');
+  assert.ok(r.regra, 'e o Claude decide quando a usar');
+  assert.match(r.resposta, /Notícias de teste/);
+  assert.deepEqual(erros, []);
+});
+
 test('navegador: o formatador desenha uma resposta a sério na página', { skip: sem }, async () => {
   // Uma conversa guardada é aberta e desenhada pelo código real da página.
   const desenho = await naPagina(`(() => {

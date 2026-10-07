@@ -1898,15 +1898,23 @@
   });
 
   // ---------- enviar, repetir, exportar, apagar ----------
+  // Como no Claude normal: no painel do computador o Claude do Conversar tem sempre a pesquisa
+  // na internet à mão e decide sozinho quando a usar (notícias, preços, horários, leis…).
+  // Para o resto responde logo, sem pesquisar. Na página do claude.ai não há internet.
+  const PESQUISA = Boolean(LOCAL_TOKEN);
+  const SAFE_WEB = SAFE
+    .replace(/Não tens acesso à internet\.[^\n]*/, "Tens pesquisa na internet (WebSearch e WebFetch). Usa-a sempre que a resposta dependa de informação atual ou verificável (notícias, preços, horários, leis, taxas, resultados) ou quando a pessoa pedir; para o resto, responde logo, sem pesquisar.")
+    .replace(/^- Se algo depender de informação atual.*$/m, "- Quando pesquisares, cada facto atual leva a fonte e a data: [Verificado: fonte, data]. Prefere fontes oficiais ou primárias. Sem fonte, escreve [Não verificado]. No fim, lista as ligações que usaste.");
   function contextoDoTema() {
     const dados = temaAtual?.dados ? temaAtual.dados() : "";
     return [
-      SAFE,
+      PESQUISA ? SAFE_WEB : SAFE,
       temaAtual ? temaAtual.regras : "PAPEL: assistente pessoal. Respostas curtas e práticas; se não souberes, diz que não sabes.",
       temaAtual && dados ? `DADOS DELE NESTA ÁREA (usa-os; não inventes outros):\n${dados}` : "",
     ].filter(Boolean).join("\n\n");
   }
   function pedirResposta() {
+    const web = PESQUISA;
     const bolha = h("div", { class: "bubble ai", text: "…" });
     // A resposta chega palavra a palavra; reformatar tudo a cada pedaço fica pesado numa
     // resposta longa, por isso só se redesenha a cada 80 ms (e no fim, sempre).
@@ -1924,7 +1932,7 @@
       $("talk-chat").scrollTop = $("talk-chat").scrollHeight;
       try {
         const { text } = await sampleFn([{ role: "user", content: contextoDoTema() }, ...conversa.slice(-12)],
-          opts({ signal, cache: false, onText: ({ text }) => mostrar(text) }));
+          opts({ signal, cache: false, web: web || undefined, onText: ({ text }) => { if (text) mostrar(text); } }));
         mostrar(text, true);
         conversa.push({ role: "assistant", content: text });
         guardarConversa();

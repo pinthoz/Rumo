@@ -1042,6 +1042,8 @@ export async function serve(argv = []) {
 
 function arrancarExtras() {
   aquecerClaude();
+  // O Conversar tem sempre a pesquisa à mão: este já arrancado responde-lhe sem esperar.
+  aquecerClaude({ web: true });
   // Agenda e emails sempre frescos: ao arrancar e de 30 em 30 minutos, só leitura.
   // Uma falha (sem rede, conector desligado) deixa as listas anteriores como estavam.
   const google = () => atualizarGoogle(ROOT).catch((e) => registarErro(`Google: ${e.message}`));

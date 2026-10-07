@@ -81,3 +81,9 @@ test('conversar: texto simples nunca desaparece', () => {
   formatar('', vazio);
   assert.equal(vazio.childNodes.length, 1, 'uma resposta vazia não rebenta o desenho');
 });
+
+test('Conversar: as regras com pesquisa substituem mesmo as de "sem internet"', () => {
+  // As duas trocas dependem do texto exato das regras gerais (SAFE): se este mudar, avisa aqui.
+  assert.match(script, /"- Não inventes factos, números, datas, leis, estudos ou fontes\. Não tens acesso à internet\."/);
+  assert.match(script, /"- Se algo depender de informação atual/);
+});
