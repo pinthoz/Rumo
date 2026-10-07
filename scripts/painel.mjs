@@ -911,6 +911,11 @@ export function createPanelServer({ token = crypto.randomBytes(24).toString('bas
       return json(res, err.message === 'too_large' ? 413 : 400, { error: err.message === 'too_large' ? 'O documento é demasiado grande.' : 'Não foi possível processar o pedido.' });
     }
   });
+  // As ligações paradas duram mais do que o cliente espera (o fetch do Node larga-as aos 4 s,
+  // os navegadores mais tarde). Com os 5 s por omissão, um pedido podia sair por uma ligação
+  // que o servidor acabara de fechar e falhar com ECONNRESET.
+  server.keepAliveTimeout = 65000;
+  server.headersTimeout = 66000;
   return { server, token };
 }
 
