@@ -416,3 +416,31 @@ test('painel local: a versão do CV ajustada a um cargo fica à parte, sem tocar
   assert.equal((await res.json()).file, 'carreira/cvs/cv-segredo.md');
   assert.equal((await api('/api/cv-versao', { method: 'POST', body: JSON.stringify({ cargo: 'X', markdown: '  ' }) })).status, 400);
 });
+
+test('painel local: criar um evento valida tudo e põe-no logo na agenda', async () => {
+  const { argumentosEvento, criarEvento } = await import('./painel.mjs');
+  assert.deepEqual(argumentosEvento({ titulo: 'Jantar', dia: '2026-10-08', inicio: '23:30', duracao: 60, fuso: 'Europe/Lisbon' }),
+    { summary: 'Jantar', timeZone: 'Europe/Lisbon', startTime: '2026-10-08T23:30:00', endTime: '2026-10-09T00:30:00' }, 'passa da meia-noite');
+  assert.equal(argumentosEvento({ titulo: 'Férias', dia: '2026-12-31', diaInteiro: true }).endTime, '2027-01-01T00:00:00');
+  for (const mau of [{ dia: '2026-10-08', inicio: '10:00', duracao: 30 }, { titulo: 'x', dia: 'amanhã', inicio: '10:00', duracao: 30 }, { titulo: 'x', dia: '2026-10-08', inicio: '25:00', duracao: 30 }, { titulo: 'x', dia: '2026-10-08', inicio: '10:00', duracao: 0 }]) {
+    assert.throws(() => argumentosEvento(mau));
+  }
+  assert.equal(argumentosEvento({ titulo: 'x', dia: '2026-10-08', diaInteiro: true, fuso: 'nada; rm -rf' }).timeZone, 'Europe/Lisbon', 'fuso estranho é ignorado');
+  // A API recusa dados inválidos antes de chamar o Claude.
+  assert.equal((await api('/api/agenda/evento', { method: 'POST', body: JSON.stringify({ titulo: '', dia: '2026-10-08' }) })).status, 400);
+
+  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'rumo-evento-'));
+  const pedido = path.join(pasta, 'pedido.txt');
+  const falso = path.join(pasta, 'claude-evento.mjs');
+  fs.writeFileSync(falso, `let t = ''; process.stdin.on('data', (d) => { t += d; }); process.stdin.on('end', () => { require('fs').writeFileSync(${JSON.stringify(pedido)}, t); console.log('{"ok": true, "id": "ev9", "url": "https://www.google.com/calendar/event?eid=ev9"}'); });`.replace("require('fs')", "(await import('node:fs'))").replace("process.stdin.on('end', () =>", "process.stdin.on('end', async () =>"));
+  try {
+    const r = await criarEvento({ titulo: 'Dentista', dia: '2026-10-08', inicio: '10:00', duracao: 45, local: 'Clínica' }, pasta, { cli: [process.execPath, falso], timeout: 8000 });
+    assert.equal(r.evento.summary, 'Dentista');
+    assert.match(fs.readFileSync(pedido, 'utf8'), /"startTime":"2026-10-08T10:00:00","endTime":"2026-10-08T10:45:00","location":"Clínica"/, 'o Claude recebe os argumentos exatos');
+    const agenda = JSON.parse(fs.readFileSync(path.join(pasta, 'rotina', 'agenda.json'), 'utf8'));
+    assert.deepEqual(agenda.items.map((e) => [e.id, e.summary, e.start]), [['ev9', 'Dentista', '2026-10-08T10:00:00']], 'já aparece na agenda do painel');
+    assert.equal(agenda.items[0].url, 'https://www.google.com/calendar/event?eid=ev9');
+  } finally {
+    fs.rmSync(pasta, { recursive: true, force: true });
+  }
+});

@@ -88,6 +88,7 @@
         <h3>A tua agenda de hoje</h3>
         <span class="row">
           <span class="chip" id="agenda-hoje-count" hidden></span>
+          <button class="btn small" id="agenda-novo" type="button" title="Criar um evento no Google Calendar">+ Evento</button>
           <button class="btn small ghost" id="agenda-refresh" type="button">Atualizar</button>
         </span>
       </div>
@@ -231,6 +232,7 @@
         <h3>A semana no calendário</h3>
         <span class="row">
           <span class="muted small" id="agenda-semana-sub"></span>
+          <button class="btn small" id="agenda-semana-novo" type="button" title="Criar um evento no Google Calendar">+ Evento</button>
           <button class="btn small ghost" id="agenda-semana-refresh" type="button">Atualizar</button>
         </span>
       </div>
@@ -925,4 +927,41 @@ Cumprimentos</textarea>
 </main>
 </div>
 
-<script src="rumo.js"></script>
+<!-- ============ NOVO EVENTO (Google Calendar) ============ -->
+  <dialog class="ev-dialog" id="ev-dialog" aria-labelledby="ev-titulo-dialogo">
+    <form id="ev-form" novalidate>
+      <h3 id="ev-titulo-dialogo">Novo evento</h3>
+      <div class="ev-campos" id="ev-passo1">
+        <label class="label" for="ev-titulo">Título</label>
+        <input type="text" id="ev-titulo" maxlength="200" autocomplete="off" placeholder="Ex.: Dentista">
+        <div class="ev-linha">
+          <span><label class="label" for="ev-dia">Dia</label><input type="date" id="ev-dia"></span>
+          <span id="ev-horas"><label class="label" for="ev-inicio">Início</label><input type="time" id="ev-inicio" step="300"></span>
+          <span id="ev-duracao-campo"><label class="label" for="ev-duracao">Duração</label>
+            <select id="ev-duracao">
+              <option value="15">15 min</option><option value="30">30 min</option><option value="45">45 min</option>
+              <option value="60" selected>1 hora</option><option value="90">1 h 30</option><option value="120">2 horas</option>
+              <option value="180">3 horas</option><option value="240">4 horas</option>
+            </select></span>
+        </div>
+        <label class="row small"><input type="checkbox" id="ev-dia-inteiro"> Dia inteiro</label>
+        <label class="label" for="ev-local">Local (opcional)</label>
+        <input type="text" id="ev-local" maxlength="200" autocomplete="off" placeholder="Ex.: Clínica, Rua…">
+      </div>
+      <div class="ev-resumo" id="ev-passo2" hidden>
+        <p class="muted small">Confirma antes de criar. O evento vai para o teu calendário principal do Google.</p>
+        <p class="ev-resumo-texto" id="ev-resumo"></p>
+      </div>
+      <p class="note" id="ev-nota" role="status"></p>
+      <div class="row between">
+        <button class="btn ghost" id="ev-cancelar" type="button">Cancelar</button>
+        <span class="row">
+          <button class="btn" id="ev-voltar" type="button" hidden>Voltar</button>
+          <button class="btn primary" id="ev-rever" type="submit">Rever</button>
+          <button class="btn accent" id="ev-criar" type="button" hidden>Criar no Google Calendar</button>
+        </span>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="rumo.js"></script>

@@ -29,10 +29,11 @@ O ficheiro indicado (PDF, Word, Markdown, texto) ou o texto colado, e `carreira/
    - Word (`.docx`): usa a skill `docx` se estiver disponível; senão, pede ao utilizador que exporte para PDF ou cole o texto.
    - Markdown ou texto: lê o ficheiro.
    - Link (LinkedIn, página pessoal): WebFetch **uma vez**; se pedir sessão, pede ao utilizador o texto.
-3. **Preencher a estrutura de `cv.modelo.md`**, secção a secção: cabeçalho (nome, cidade, contactos), Resumo, Experiência, Projetos, Formação, Competências.
-   - **Transcreve, não escrevas.** Cada linha sai do documento do utilizador. Podes cortar repetições, uniformizar datas (`AAAA-MM`) e passar parágrafos a pontos.
+3. **Preencher a estrutura de `cv.modelo.md`**, secção a secção: cabeçalho (nome, função pretendida, localidade e contactos), Perfil Profissional, Experiência Profissional, Formação Académica, Projetos, Competências e, só se o documento os tiver, Certificações e Voluntariado e Outras Atividades. Cada secção em ordem cronológica inversa; a Formação Académica precede a Experiência Profissional num estudante ou recém-licenciado. Registo formal; os títulos ficam em português de Portugal, como no modelo. Não copies os exemplos nem o comentário do modelo para o `cv.md`.
+   - **Transcreve, não escrevas.** Cada linha sai do documento do utilizador. Podes cortar repetições, uniformizar datas (`MM/AAAA`) e passar parágrafos a pontos.
    - **Nada de inventar:** não acrescentes resultados, números, tecnologias nem responsabilidades que o documento não tenha.
-   - O que o documento não disser fica como `(por preencher)` — nunca preenchido a adivinhar.
+   - O que é essencial e o documento não diz (datas, entidade, contactos) fica como `(por preencher)`, nunca preenchido a adivinhar.
+   - O que é opcional e não existe (dissertação, prémios, bolsas, certificações, voluntariado, classificação final) **não aparece**: nem ponto vazio, nem `(por preencher)`.
    - Mantém a língua do CV original.
 4. **Mostrar antes de gravar.** Apresenta o resultado (ou as diferenças, se `cv.md` já existir) e a lista do que ficou `(por preencher)`. **Só gravas depois de o utilizador confirmar.**
 5. **Gravar** em `carreira/cv.md`. Se o ficheiro já existir, guarda a versão anterior em `.sync/backups/cv/AAAA-MM-DD-HH-MM.md` antes de escrever.

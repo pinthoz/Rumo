@@ -212,6 +212,10 @@
     } catch { return doEndereco; }
   })();
   const unsub = {};
+  // O painel do computador aberto sem a chave (um separador novo, o endereço escrito à mão):
+  // não fala com o Claude nem com os ficheiros. Diz-se como resolver em vez de falhar calado.
+  const SEM_CHAVE = !LOCAL_TOKEN && /^(127\.0\.0\.1|localhost)$/.test(location.hostname);
+  const AVISO_SEM_CHAVE = "Este separador perdeu a ligação ao painel. Abre o Rumo pelo atalho.";
 
   function snapshotForLocal() {
     return {
@@ -912,7 +916,7 @@
     agendaState.updatedAt = updatedAt || new Date().toISOString();
     renderAgenda();
   }
-  async function fetchAgenda({ silent = false, btn = $("agenda-refresh"), note = $("agenda-note") } = {}) {
+  async function fetchAgenda({ silent = false, btn = $("agenda-refresh"), note = $("agenda-note"), fresco = false } = {}) {
     if (!mcpNs) return;
     if (!silent) { btn.classList.add("loading"); btn.disabled = true; note.textContent = "a ler o calendário…"; }
     try {
@@ -923,7 +927,7 @@
         orderBy: "startTime",
         pageSize: 50,
         timeZone: TZ,
-      }, { cache: { staleTime: 120000 } });
+      }, { cache: fresco ? { refresh: true } : { staleTime: 120000 } });
       const events = eventsFromPayload(res && res.payload);
       setAgenda(events, "calendar", res?.cache?.storedAt ? new Date(res.cache.storedAt).toISOString() : null);
       if (state.mode === "cloud") save("agenda", { updatedAt: agendaState.updatedAt, items: events });
@@ -956,6 +960,103 @@
   }
   $("agenda-refresh").addEventListener("click", () => atualizarAgenda($("agenda-refresh"), $("agenda-note")));
   $("agenda-semana-refresh").addEventListener("click", () => atualizarAgenda($("agenda-semana-refresh"), $("agenda-semana-note")));
+
+  // ---------- novo evento no Google Calendar ----------
+  // Dois passos: preencher e rever. Só o botão «Criar no Google Calendar» envia, depois de a
+  // pessoa ver o resumo (nada é criado sem confirmação). No claude.ai usa o conector; no
+  // painel local, o Claude Code do computador, só com a ferramenta de criar eventos.
+  let eventoPendente = null;
+  let notaDoEvento = $("agenda-note");
+  function abrirNovoEvento(nota) {
+    notaDoEvento = nota;
+    $("ev-form").reset();
+    const agora = new Date();
+    const proxima = new Date(agora.getTime() + 60 * 60 * 1000);
+    $("ev-dia").value = TODAY;
+    $("ev-inicio").value = `${String(proxima.getHours()).padStart(2, "0")}:00`;
+    $("ev-duracao").value = "60";
+    passoEvento(1);
+    $("ev-nota").textContent = mcpNs || LOCAL_TOKEN ? "" : (SEM_CHAVE ? AVISO_SEM_CHAVE : "Para criar eventos, abre o Rumo no claude.ai com o Google Calendar ligado, ou o painel no computador.");
+    $("ev-dialog").showModal();
+    $("ev-titulo").focus();
+  }
+  function passoEvento(n) {
+    $("ev-passo1").hidden = n !== 1;
+    $("ev-passo2").hidden = n !== 2;
+    $("ev-rever").hidden = n !== 1;
+    $("ev-voltar").hidden = n !== 2;
+    $("ev-criar").hidden = n !== 2;
+    $("ev-criar").disabled = false;
+  }
+  $("ev-dia-inteiro").addEventListener("change", () => {
+    const inteiro = $("ev-dia-inteiro").checked;
+    $("ev-horas").hidden = inteiro;
+    $("ev-duracao-campo").hidden = inteiro;
+  });
+  const somarMinutos = (dia, hora, min) => {
+    const [h, m] = hora.split(":").map(Number);
+    const total = h * 60 + m + min;
+    return { dia: addDays(dia, Math.floor(total / 1440)), hora: `${String(Math.floor((total % 1440) / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}` };
+  };
+  $("ev-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const titulo = $("ev-titulo").value.trim();
+    const dia = $("ev-dia").value;
+    const diaInteiro = $("ev-dia-inteiro").checked;
+    const inicio = $("ev-inicio").value;
+    const duracao = Number($("ev-duracao").value);
+    if (!titulo) { $("ev-nota").textContent = "Escreve o título do evento."; $("ev-titulo").focus(); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) { $("ev-nota").textContent = "Escolhe o dia."; return; }
+    if (!diaInteiro && !/^\d{2}:\d{2}$/.test(inicio)) { $("ev-nota").textContent = "Escolhe a hora de início."; return; }
+    const local = $("ev-local").value.trim();
+    const fim = diaInteiro ? null : somarMinutos(dia, inicio, duracao);
+    eventoPendente = { titulo, dia, diaInteiro, inicio, duracao, local, fuso: TZ };
+    const quando = new Date(`${dia}T12:00:00`).toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    $("ev-resumo").textContent = `«${titulo}» · ${quando}${diaInteiro ? " · dia inteiro" : ` · das ${inicio} às ${fim.hora}${fim.dia !== dia ? " (dia seguinte)" : ""}`}${local ? ` · ${local}` : ""}`;
+    $("ev-nota").textContent = "";
+    passoEvento(2);
+  });
+  $("ev-voltar").addEventListener("click", () => { passoEvento(1); $("ev-nota").textContent = ""; });
+  $("ev-cancelar").addEventListener("click", () => $("ev-dialog").close());
+  $("ev-criar").addEventListener("click", async () => {
+    const ev = eventoPendente;
+    if (!ev) return;
+    $("ev-criar").disabled = true;
+    $("ev-voltar").disabled = true;
+    $("ev-nota").textContent = "A criar no Google Calendar…";
+    try {
+      if (mcpNs) {
+        const fim = ev.diaInteiro ? null : somarMinutos(ev.dia, ev.inicio, ev.duracao);
+        await mcpNs.callTool(CAL_SERVER, "create_event", {
+          summary: ev.titulo,
+          startTime: ev.diaInteiro ? `${ev.dia}T00:00:00` : `${ev.dia}T${ev.inicio}:00`,
+          endTime: ev.diaInteiro ? `${addDays(ev.dia, 1)}T00:00:00` : `${fim.dia}T${fim.hora}:00`,
+          timeZone: TZ,
+          ...(ev.diaInteiro ? { allDay: true } : {}),
+          ...(ev.local ? { location: ev.local } : {}),
+        });
+        await fetchAgenda({ silent: true, fresco: true });
+      } else if (LOCAL_TOKEN) {
+        await localRequest("/api/agenda/evento", { method: "POST", body: JSON.stringify(ev) });
+        await loadLocalAgenda();
+      } else {
+        throw new Error((SEM_CHAVE ? AVISO_SEM_CHAVE : "Para criar eventos, abre o Rumo no claude.ai com o Google Calendar ligado, ou o painel no computador."));
+      }
+      eventoPendente = null;
+      $("ev-dialog").close();
+      notaDoEvento.textContent = `Evento «${ev.titulo}» criado no Google Calendar.`;
+    } catch (e) {
+      // Não se repete sozinho: se a resposta se perdeu, o evento pode já existir.
+      $("ev-nota").textContent = e?.code
+        ? gmailErrorText(e.code, e.message).replace("Gmail", "Google Calendar")
+        : (e?.message || "Não foi possível criar o evento.");
+      $("ev-criar").disabled = false;
+    } finally {
+      $("ev-voltar").disabled = false;
+    }
+  });
+  $("agenda-novo").addEventListener("click", () => abrirNovoEvento($("agenda-note")));
+  $("agenda-semana-novo").addEventListener("click", () => abrirNovoEvento($("agenda-semana-note")));
 
   $("gmail-close").addEventListener("click", () => {
     const item = gmailState.items.filter((it) => !gmailState.closed.has(it.id))[gmailState.index];
@@ -2663,12 +2764,14 @@
   });
   // ---------- CV: o Claude organiza o CV dele nas secções da área Carreira ----------
   const CV_SECTIONS = [
-    "Cabeçalho: nome no título (# Nome), e por baixo cidade · email · LinkedIn · GitHub (só o que o CV tiver).",
-    "## Resumo — duas ou três frases, tiradas do CV.",
-    "## Experiência — um ### por cargo: \"### Cargo — Empresa (AAAA-MM a AAAA-MM)\" e pontos com o que fez e o resultado.",
-    "## Projetos — um ### por projeto, com link se houver.",
-    "## Formação — um ### por curso: \"### Curso — Instituição (AAAA)\".",
-    "## Competências — pontos: Linguagens, Ferramentas, Línguas.",
+    "Registo formal, em português de Portugal nos títulos; o conteúdo mantém a língua do CV original.",
+    "Cabeçalho: nome no título (# Nome); na linha seguinte, a negrito, a função pretendida (só se o CV a indicar); depois localidade · telefone · email · LinkedIn · GitHub (só o que o CV tiver).",
+    "## Perfil Profissional — duas a três linhas, tiradas do CV.",
+    "## Experiência Profissional — do mais recente para o mais antigo; um ### por função: \"### Função — Entidade\", por baixo \"Localidade · MM/AAAA – MM/AAAA\" (ou \"presente\") e pontos iniciados por um verbo de ação, com a tarefa e o resultado.",
+    "## Formação Académica — do mais recente; um ### por curso: \"### Grau em Curso — Instituição de Ensino\", por baixo \"Localidade · AAAA – AAAA\" e, só se o CV os tiver, pontos com dissertação, projeto ou prémios (sem pontos vazios nem \"por preencher\"). Num estudante ou recém-licenciado, esta secção precede a Experiência Profissional.",
+    "## Projetos — um ### por projeto, \"### Designação — ligação\" (se houver), com o problema, as tecnologias e o resultado.",
+    "## Competências — pontos: **Técnicas:**, **Ferramentas:**, **Línguas:** (com nível, se o CV o indicar).",
+    "## Certificações e ## Voluntariado e Outras Atividades — só se o CV os tiver.",
   ].join("\n");
   // ---------- cargos sugeridos a partir do CV ----------
   const cargosEscolhidos = new Set();
@@ -3472,6 +3575,8 @@
   }
   async function connectLocalFiles() {
     if (!LOCAL_TOKEN) return;
+    // Os limites leem-se à parte e logo no início: uma falha noutro passo não os esconde.
+    loadLimits();
     try {
       const data = await localRequest("/api/files");
       cfgList = data.files || [];
@@ -3492,7 +3597,6 @@
       await loadLocalDados();
       await loadLocalCv();
       await loadLocalVagas();
-      await loadLimits();
     } catch (e) {
       $("cfg-offline").querySelector("span").textContent = `Não foi possível ligar aos ficheiros locais: ${e.message}`;
     }
@@ -3551,7 +3655,11 @@
     // o servidor local fala com ele e estas funções passam a funcionar na mesma.
     if (!sampleFn && LOCAL_TOKEN) sampleFn = localSample();
     if (!sampleFn) {
-      for (const id of ["fix-note", "inv-note", "chat-note", "wr-note", "voice-note", "cv-note"]) $(id).textContent = "Esta função só funciona dentro do Claude.";
+      for (const id of ["fix-note", "inv-note", "talk-note", "wr-note", "voice-note", "cv-note"]) {
+        // Um aviso em falta nunca pode parar o arranque da página (agenda, emails, botões).
+        const nota = $(id);
+        if (nota) nota.textContent = SEM_CHAVE ? AVISO_SEM_CHAVE : "Esta função só funciona dentro do Claude.";
+      }
     }
     // O botão do Gmail só aparece onde há conectores; sem eles fica a lista do /hoje.
     if (mcpNs) {

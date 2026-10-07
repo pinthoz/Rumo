@@ -25,6 +25,7 @@ const sem = navegador ? false : 'sem Chrome/Edge neste computador';
 
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 let root, perfil, server, proc, ws, base;
+const eventosCriados = [];
 const erros = [];
 let seq = 0;
 const pendentes = new Map();
@@ -64,7 +65,16 @@ before(async () => {
     fs.writeFileSync(path.join(pasta, 'rotina', 'emails.json'), JSON.stringify({ updatedAt: agora.toISOString(), items: [] }));
     return { agenda: 1, emails: 0 };
   };
-  ({ server } = createPanelServer({ root, token, lerGoogleAgora }));
+  // Criar eventos de mentira: guarda o pedido e põe o evento na agenda, sem tocar no Google.
+  const criarEventoAgora = async (body, pasta) => {
+    eventosCriados.push(body);
+    const ficheiro = path.join(pasta, 'rotina', 'agenda.json');
+    const agenda = JSON.parse(fs.readFileSync(ficheiro, 'utf8'));
+    agenda.items.push({ id: 'novo', summary: body.titulo, start: `${body.dia}T${body.inicio}:00`, end: `${body.dia}T${body.inicio}:00` });
+    fs.writeFileSync(ficheiro, JSON.stringify(agenda));
+    return { evento: { id: 'novo' } };
+  };
+  ({ server } = createPanelServer({ root, token, lerGoogleAgora, criarEventoAgora }));
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   base = `http://127.0.0.1:${server.address().port}`;
 
@@ -229,6 +239,37 @@ test('navegador: no Conversar, o Claude pode pesquisar e decide quando', { skip:
   assert.equal(r.web, true, 'a pesquisa vai sempre disponível no painel local');
   assert.ok(r.regra, 'e o Claude decide quando a usar');
   assert.match(r.resposta, /Notícias de teste/);
+  assert.deepEqual(erros, []);
+});
+
+test('navegador: + Evento pede confirmação e só depois cria', { skip: sem }, async () => {
+  const r = await naPagina(`(async () => {
+    const esperar = (ms) => new Promise((ok) => setTimeout(ok, ms));
+    document.getElementById('tab-hoje').click();
+    document.getElementById('agenda-refresh').click();
+    await esperar(600);
+    document.getElementById('agenda-novo').click();
+    const aberto = document.getElementById('ev-dialog').open;
+    document.getElementById('ev-titulo').value = 'Dentista de teste';
+    document.getElementById('ev-inicio').value = '10:00';
+    document.getElementById('ev-duracao').value = '45';
+    document.getElementById('ev-form').requestSubmit();
+    const resumo = document.getElementById('ev-resumo').textContent;
+    const passo2 = !document.getElementById('ev-passo2').hidden;
+    document.getElementById('ev-criar').click();
+    await esperar(800);
+    return { aberto, resumo, passo2, fechado: !document.getElementById('ev-dialog').open,
+      naAgenda: document.getElementById('agenda-hoje').textContent.includes('Dentista de teste'),
+      nota: document.getElementById('agenda-note').textContent };
+  })()`);
+  assert.equal(r.aberto, true, 'o formulário abre');
+  assert.equal(r.passo2, true, 'primeiro mostra o resumo');
+  assert.match(r.resumo, /«Dentista de teste».*das 10:00 às 10:45/);
+  assert.equal(eventosCriados.length, 1, 'só cria depois de confirmar, e uma vez');
+  assert.equal(eventosCriados[0].titulo, 'Dentista de teste');
+  assert.equal(r.fechado, true);
+  assert.equal(r.naAgenda, true, 'o evento aparece logo na agenda de hoje');
+  assert.match(r.nota, /criado no Google Calendar/);
   assert.deepEqual(erros, []);
 });
 

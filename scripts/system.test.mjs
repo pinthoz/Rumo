@@ -127,7 +127,9 @@ test('artifact: tudo o que o script procura existe no HTML', () => {
   // `focus-dot` é criado pelo próprio script, ao montar os separadores.
   const criadosPeloScript = new Set(['focus-dot']);
 
-  const procurados = [...new Set([...script.matchAll(/\$\("([a-z0-9-]+)"\)/g)].map((m) => m[1]))];
+  // Também os ids guardados em listas e percorridos com `for (const id of [...]) $(id)`.
+  const emListas = [...script.matchAll(/for \(const id of \[([^\]]+)\]\)/g)].flatMap((m) => [...m[1].matchAll(/"([a-z0-9-]+)"/g)].map((x) => x[1]));
+  const procurados = [...new Set([...[...script.matchAll(/\$\("([a-z0-9-]+)"\)/g)].map((m) => m[1]), ...emListas])];
   const emFalta = procurados.filter((id) => !ids.has(id) && !criadosPeloScript.has(id));
   assert.deepEqual(emFalta, [], 'o script procura ids que não existem no HTML');
 
