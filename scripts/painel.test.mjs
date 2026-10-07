@@ -457,3 +457,28 @@ test('painel local: criar um evento valida tudo e põe-no logo na agenda', async
     fs.rmSync(pasta, { recursive: true, force: true });
   }
 });
+
+test('painel local: marcar um evento como feito põe "✓ " no título, aqui e no Google', async () => {
+  const { argumentosFeito, marcarFeito } = await import('./painel.mjs');
+  assert.deepEqual(argumentosFeito({ id: 'abc_20261007T080000Z', titulo: 'Duolingo', feito: true }), { eventId: 'abc_20261007T080000Z', summary: '✓ Duolingo', notificationLevel: 'NONE' }, 'sem emails aos convidados');
+  assert.equal(argumentosFeito({ id: 'abc', titulo: '✓ Duolingo', feito: false }).summary, 'Duolingo', 'desmarcar tira a marca');
+  for (const mau of [{ id: 'a b', titulo: 'x', feito: true }, { id: 'abc', titulo: '', feito: true }, { id: 'abc', titulo: 'x' }]) assert.throws(() => argumentosFeito(mau));
+  assert.equal((await api('/api/agenda/feito', { method: 'POST', body: JSON.stringify({ id: '../x', titulo: 'x', feito: true }) })).status, 400);
+
+  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'rumo-feito-'));
+  fs.mkdirSync(path.join(pasta, 'rotina'));
+  fs.writeFileSync(path.join(pasta, 'rotina', 'agenda.json'), JSON.stringify({ updatedAt: '2026-10-07T08:00:00Z', items: [
+    { id: 'd1', summary: 'Duolingo', start: '2026-10-07T09:00:00' }, { id: 'g1', summary: 'Ginásio', start: '2026-10-07T18:00:00' },
+  ] }));
+  const pedido = path.join(pasta, 'pedido.txt');
+  const falso = path.join(pasta, 'claude-feito.mjs');
+  fs.writeFileSync(falso, `import fs from 'node:fs'; let t = ''; process.stdin.on('data', (d) => { t += d; }); process.stdin.on('end', () => { fs.writeFileSync(${JSON.stringify(pedido)}, t); console.log('{"ok": true}'); });`);
+  try {
+    await marcarFeito({ id: 'd1', titulo: 'Duolingo', feito: true }, pasta, { cli: [process.execPath, falso], timeout: 8000 });
+    assert.match(fs.readFileSync(pedido, 'utf8'), /"eventId":"d1","summary":"✓ Duolingo","notificationLevel":"NONE"/, 'o Claude recebe os argumentos exatos');
+    const items = JSON.parse(fs.readFileSync(path.join(pasta, 'rotina', 'agenda.json'), 'utf8')).items;
+    assert.deepEqual(items.map((e) => e.summary), ['✓ Duolingo', 'Ginásio'], 'só esse evento muda, já na agenda do painel');
+  } finally {
+    fs.rmSync(pasta, { recursive: true, force: true });
+  }
+});

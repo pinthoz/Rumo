@@ -7,7 +7,7 @@ O Rumo é a página `prototipo/rumo.html`. Cada pessoa tem de ter a **sua** cóp
 1. Lê `config/rumo.json` (fica fora do git, porque o link é de cada pessoa). Se não existir, é o mesmo que não ter `url`; ao gravar o link, cria-o com `{"url": "<link>"}`.
 2. **Sem `url`** (ou `publicar` pedido explicitamente sem url):
    - publica `prototipo/rumo.html` com a ferramenta Artifact, com os dois ficheiros ao lado em `files`: `{"rumo.css": "prototipo/rumo.css", "rumo.js": "prototipo/rumo.js"}` (sem eles a página abre sem estilos nem lógica):
-     - capabilities `{"db": {}, "user": {}, "sample": {}, "downloads": true, "mcp": {"servers": [{"server": "Gmail", "tools": ["search_threads"]}, {"server": "Google Calendar", "tools": ["list_events", "create_event"]}]}}` — os conectores só funcionam se a pessoa os tiver ligados no claude.ai; sem eles, a página funciona na mesma;
+     - capabilities `{"db": {}, "user": {}, "sample": {}, "downloads": true, "mcp": {"servers": [{"server": "Gmail", "tools": ["search_threads"]}, {"server": "Google Calendar", "tools": ["list_events", "create_event", "update_event"]}]}}` — os conectores só funcionam se a pessoa os tiver ligados no claude.ai; sem eles, a página funciona na mesma;
      - favicon 🧭;
      - descrição: "Painel pessoal: prioridades, foco, finanças, pensar, corretor e escrita.";
    - grava o link devolvido em `config/rumo.json` → `url`;

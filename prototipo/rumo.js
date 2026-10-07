@@ -837,9 +837,12 @@
       const edge = (v) => (typeof v === "string" ? v : v?.dateTime || v?.date || v?.datetime || "");
       const inicio = edge(ev.start ?? ev.startTime);
       const fim = edge(ev.end ?? ev.endTime);
+      const tituloGoogle = String(ev.summary || ev.title || ev.subject || "(sem título)");
       return {
         id: String(ev.id || ev.eventId || `ev-${i}`),
-        titulo: String(ev.summary || ev.title || ev.subject || "(sem título)"),
+        // Feito = o título no Google começa por "✓": o estado fica no próprio Google.
+        feito: /^\s*✓/.test(tituloGoogle),
+        titulo: tituloGoogle.replace(/^\s*✓\s*/, "") || "(sem título)",
         inicio,
         fim,
         // Uma data sem horas ("2026-09-18") é um evento de dia inteiro.
@@ -869,14 +872,46 @@
     $("agenda-hoje-count").textContent = `${hoje.length} ${hoje.length === 1 ? "compromisso" : "compromissos"}`;
     $("agenda-hoje").replaceChildren(...(hoje.length ? hoje.map((ev) => {
       const link = safeCalUrl(ev.url);
-      return h("li", { class: evNow(ev) ? "now" : "" },
+      return h("li", { class: [evNow(ev) && !ev.feito ? "now" : "", ev.feito ? "feito" : ""].filter(Boolean).join(" ") },
         h("span", { class: "when", text: evWhen(ev) }),
-        h("div", {},
+        h("div", { class: "ev-linha-titulo" },
+          botaoFeito(ev),
           link ? h("a", { class: "job-link", href: link, target: "_blank", rel: "noopener noreferrer", text: ev.titulo })
             : h("span", { class: "title", text: ev.titulo }),
           ev.local ? h("div", { class: "muted small", text: ev.local }) : null),
       );
     }) : [h("li", {}, h("span", {}), h("span", { class: "muted", text: "Nada marcado para hoje." }))]));
+  }
+  /** O visto de um evento. Clicar marca ou desmarca como feito, aqui e no Google Calendar. */
+  function botaoFeito(ev) {
+    return h("button", {
+      class: "ev-check", type: "button", "aria-pressed": String(Boolean(ev.feito)),
+      "aria-label": `${ev.feito ? "Desmarcar" : "Marcar"} «${ev.titulo}» como feito`,
+      title: ev.feito ? "Feito. Clica para desmarcar (também no Google Calendar)." : "Marcar como feito (também no Google Calendar)",
+      onclick: (e) => alternarFeito(ev, e.currentTarget),
+    });
+  }
+  async function alternarFeito(ev, btn) {
+    const feito = !ev.feito;
+    // Mostra já a mudança; se o Google recusar, volta atrás e diz porquê.
+    ev.feito = feito;
+    renderAgenda();
+    const avisar = (t) => { $("agenda-note").textContent = t; $("agenda-semana-note").textContent = t; };
+    try {
+      if (mcpNs) {
+        await mcpNs.callTool(CAL_SERVER, "update_event", { eventId: ev.id, summary: feito ? `✓ ${ev.titulo}` : ev.titulo, notificationLevel: "NONE" });
+        fetchAgenda({ silent: true, fresco: true });
+      } else if (LOCAL_TOKEN) {
+        await localRequest("/api/agenda/feito", { method: "POST", body: JSON.stringify({ id: ev.id, titulo: ev.titulo, feito }) });
+      } else {
+        throw new Error(SEM_CHAVE ? AVISO_SEM_CHAVE : "Para marcar no Google Calendar, abre o Rumo no claude.ai com o calendário ligado, ou o painel no computador.");
+      }
+      avisar(`«${ev.titulo}» ${feito ? "marcado como feito" : "desmarcado"}, também no Google Calendar.`);
+    } catch (e) {
+      ev.feito = !feito;
+      renderAgenda();
+      avisar(e?.code ? gmailErrorText(e.code, e.message).replace("Gmail", "Google Calendar") : (e?.message || "Não foi possível marcar no Google Calendar."));
+    }
   }
   // A semana é sempre de segunda a domingo: a grelha não muda de forma conforme o dia.
   const segundaDe = (d) => addDays(d, -((new Date(`${d}T12:00:00`).getDay() + 6) % 7));
@@ -889,7 +924,8 @@
       const doDia = agendaState.events.filter((ev) => evDay(ev) === d);
       return h("div", { class: `week-day${d === TODAY ? " today" : ""}` },
         h("h4", { text: `${nome(d)} ${d.slice(8)}` }),
-        ...(doDia.length ? doDia.slice(0, 4).map((ev) => h("div", { class: "week-ev" },
+        ...(doDia.length ? doDia.slice(0, 4).map((ev) => h("div", { class: `week-ev${ev.feito ? " feito" : ""}` },
+          botaoFeito(ev),
           h("span", { class: "when", text: ev.diaInteiro ? "dia " : `${evWhen(ev).slice(0, 5)} ` }), ev.titulo))
           : [h("span", { class: "muted small", text: "—" })]),
         doDia.length > 4 ? h("span", { class: "muted small", text: `+${doDia.length - 4}` }) : null);

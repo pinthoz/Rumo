@@ -26,6 +26,7 @@ const sem = navegador ? false : 'sem Chrome/Edge neste computador';
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 let root, perfil, server, proc, ws, base;
 const eventosCriados = [];
+const marcados = [];
 const erros = [];
 let seq = 0;
 const pendentes = new Map();
@@ -74,7 +75,16 @@ before(async () => {
     fs.writeFileSync(ficheiro, JSON.stringify(agenda));
     return { evento: { id: 'novo' } };
   };
-  ({ server } = createPanelServer({ root, token, lerGoogleAgora, criarEventoAgora }));
+  // Marcar como feito de mentira: guarda o pedido e muda o título na agenda, sem tocar no Google.
+  const marcarFeitoAgora = async (body, pasta) => {
+    marcados.push(body);
+    const ficheiro = path.join(pasta, 'rotina', 'agenda.json');
+    const agenda = JSON.parse(fs.readFileSync(ficheiro, 'utf8'));
+    for (const ev of agenda.items) if (ev.id === body.id) ev.summary = body.feito ? `✓ ${body.titulo}` : body.titulo;
+    fs.writeFileSync(ficheiro, JSON.stringify(agenda));
+    return { id: body.id };
+  };
+  ({ server } = createPanelServer({ root, token, lerGoogleAgora, criarEventoAgora, marcarFeitoAgora }));
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   base = `http://127.0.0.1:${server.address().port}`;
 
@@ -270,6 +280,30 @@ test('navegador: + Evento pede confirmação e só depois cria', { skip: sem }, 
   assert.equal(r.fechado, true);
   assert.equal(r.naAgenda, true, 'o evento aparece logo na agenda de hoje');
   assert.match(r.nota, /criado no Google Calendar/);
+  assert.deepEqual(erros, []);
+});
+
+test('navegador: o visto marca um evento como feito e desmarca', { skip: sem }, async () => {
+  const r = await naPagina(`(async () => {
+    const esperar = (ms) => new Promise((ok) => setTimeout(ok, ms));
+    document.getElementById('tab-hoje').click();
+    document.getElementById('agenda-refresh').click();
+    await esperar(600);
+    const linha = () => [...document.querySelectorAll('#agenda-hoje li')].find((li) => li.textContent.includes('Evento de teste'));
+    linha().querySelector('.ev-check').click();
+    await esperar(400);
+    const marcado = { classe: linha().className, pressionado: linha().querySelector('.ev-check').getAttribute('aria-pressed'), semMarca: !linha().textContent.includes('✓'), nota: document.getElementById('agenda-note').textContent };
+    linha().querySelector('.ev-check').click();
+    await esperar(400);
+    return { marcado, depois: linha().querySelector('.ev-check').getAttribute('aria-pressed') };
+  })()`);
+  assert.match(r.marcado.classe, /feito/, 'fica riscado');
+  assert.equal(r.marcado.pressionado, 'true');
+  assert.ok(r.marcado.semMarca, 'o "✓" do Google não aparece no texto: é o visto que o mostra');
+  assert.match(r.marcado.nota, /marcado como feito, também no Google Calendar/);
+  assert.equal(r.depois, 'false', 'clicar outra vez desmarca');
+  assert.deepEqual(marcados.map((m) => m.feito), [true, false]);
+  assert.equal(marcados[0].titulo, 'Evento de teste');
   assert.deepEqual(erros, []);
 });
 

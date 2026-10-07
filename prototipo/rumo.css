@@ -505,3 +505,15 @@
 @media (max-width: 420px) { .ev-linha { grid-template-columns: 1fr 1fr; } .ev-linha > span:first-child { grid-column: 1 / -1; } }
 .ev-resumo-texto { margin: 6px 0 0; padding: 12px; border-radius: 10px; background: var(--surface-2); line-height: 1.5; }
 .ev-dialog .note { min-height: 1.2em; margin: 10px 0; }
+
+/* ---------- eventos feitos (visto na agenda; no Google, "✓ " no título) ---------- */
+.ev-linha-titulo { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; align-items: center; }
+.ev-linha-titulo > .muted { grid-column: 2; }
+.ev-check { width: 18px; height: 18px; flex-shrink: 0; border: 1.5px solid var(--line); border-radius: 50%; background: var(--surface); padding: 0; cursor: pointer; display: inline-grid; place-items: center; transition: background 0.15s ease, border-color 0.15s ease; }
+.ev-check:hover { border-color: var(--accent); }
+.ev-check[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); }
+.ev-check[aria-pressed="true"]::after { content: ""; width: 5px; height: 9px; border: solid var(--accent-ink); border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg); }
+.agenda li.feito .title, .agenda li.feito a, .week-ev.feito { text-decoration: line-through; opacity: 0.6; }
+.week-ev { display: flex; align-items: center; gap: 5px; }
+.week-ev .ev-check { width: 14px; height: 14px; }
+.week-ev .ev-check[aria-pressed="true"]::after { width: 4px; height: 7px; }
