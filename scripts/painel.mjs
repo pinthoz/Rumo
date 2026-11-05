@@ -455,8 +455,22 @@ function arrancarClaude(opcoes, cli) {
   return p;
 }
 
+/** Só imagens PNG, JPEG, WebP ou GIF, em base64, no máximo 5: o resto é recusado. */
+export const TIPOS_IMAGEM = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+export function limparImagens(lista) {
+  if (lista === undefined || lista === null) return [];
+  if (!Array.isArray(lista) || lista.length > 5) throw new Error('No máximo 5 imagens por mensagem.');
+  return lista.map((img) => {
+    const tipo = String(img?.tipo || '');
+    const dados = String(img?.dados || '');
+    if (!TIPOS_IMAGEM.includes(tipo)) throw new Error('Só imagens PNG, JPEG, WebP ou GIF.');
+    if (!/^[A-Za-z0-9+/]+=*$/.test(dados) || dados.length > 7_000_000) throw new Error('Imagem inválida ou grande demais.');
+    return { type: 'image', source: { type: 'base64', media_type: tipo, data: dados } };
+  });
+}
+
 /** Entrega o pedido a um processo já arrancado e espera pela resposta. */
-function pedirAoClaude(p, prompt, { timeout, onDelta }) {
+function pedirAoClaude(p, prompt, { timeout, onDelta, imagens = [] }) {
   return new Promise((resolve, reject) => {
     if (!p.vivo) return reject(new Error('o Claude Code terminou antes do pedido'));
     const timer = setTimeout(() => { p.child.kill(); reject(new Error('demorou demasiado')); }, timeout);
@@ -465,7 +479,9 @@ function pedirAoClaude(p, prompt, { timeout, onDelta }) {
       resolve: (t) => { clearTimeout(timer); resolve(t); },
       reject: (e) => { clearTimeout(timer); reject(e); },
     };
-    p.child.stdin.write(`${JSON.stringify({ type: 'user', message: { role: 'user', content: prompt } })}\n`);
+    // Com imagens, a mensagem leva as imagens primeiro e o texto depois.
+    const content = imagens.length ? [...imagens, { type: 'text', text: prompt }] : prompt;
+    p.child.stdin.write(`${JSON.stringify({ type: 'user', message: { role: 'user', content } })}\n`);
     p.child.stdin.end();
   });
 }
@@ -504,7 +520,7 @@ export function desligarClaude() {
   prontos.clear();
 }
 
-async function askClaudeAgora(prompt, { timeout = 180000, cli = process.env.RUMO_CLAUDE_CLI || 'claude', model = '', web = false, onDelta = null } = {}) {
+async function askClaudeAgora(prompt, { timeout = 180000, cli = process.env.RUMO_CLAUDE_CLI || 'claude', model = '', web = false, onDelta = null, imagens = [] } = {}) {
   const chave = chaveDe({ model, web });
   let recebeu = false;
   let p = prontos.get(chave);
@@ -513,14 +529,14 @@ async function askClaudeAgora(prompt, { timeout = 180000, cli = process.env.RUMO
   if (!jaArrancado) p = arrancarClaude({ model, web }, cli);
   let texto;
   try {
-    texto = await pedirAoClaude(p, prompt, { timeout, onDelta: (d) => { recebeu = true; onDelta?.(d); } });
+    texto = await pedirAoClaude(p, prompt, { timeout, imagens, onDelta: (d) => { recebeu = true; onDelta?.(d); } });
   } catch (e) {
     // Os testes usam executáveis falsos: os erros deles não vão para o registo verdadeiro.
     if (cli === 'claude') registarErro(`Claude${jaArrancado ? ' (já arrancado)' : ''}: ${e.message}`);
     // Um processo que esteve muito tempo à espera pode já não servir (sessão renovada, rede
     // que caiu). Se falhou antes de escrever alguma coisa, tenta uma vez com um processo novo.
     if (!jaArrancado || recebeu || e.message === 'demorou demasiado' || e.message === 'nao-instalado') throw e;
-    texto = await pedirAoClaude(arrancarClaude({ model, web }, cli), prompt, { timeout, onDelta });
+    texto = await pedirAoClaude(arrancarClaude({ model, web }, cli), prompt, { timeout, onDelta, imagens });
   }
   // Correu bem: deixa já outro pronto para o próximo pedido do mesmo tipo.
   aquecerClaude({ model, web }, cli);
@@ -1016,11 +1032,14 @@ export function createPanelServer({ token = crypto.randomBytes(24).toString('bas
         return json(res, 200, await readLimits());
       }
       if (url.pathname === '/api/claude' && req.method === 'POST') {
-        const body = await bodyOf(req);
+        // As imagens anexadas no Conversar fazem o pedido maior: até 16 MB.
+        const body = await bodyOf(req, 16 * MAX_BODY);
         const prompt = String(body.prompt ?? '').slice(0, 60000);
         if (!prompt.trim()) return json(res, 400, { error: 'Pedido vazio.' });
+        let imagens;
+        try { imagens = limparImagens(body.imagens); } catch (e) { return json(res, 400, { error: e.message }); }
         const web = body.web === true;
-        const opcoes = { model: String(body.modelo ?? ''), web, timeout: web ? 300000 : 180000 };
+        const opcoes = { model: String(body.modelo ?? ''), web, imagens, timeout: web ? 300000 : 180000 };
         const mensagemDeErro = (e) => (e.message === 'nao-instalado'
           ? 'O Claude Code não está instalado neste computador (ou não está no PATH).'
           : e.message === 'demorou demasiado' ? 'O Claude demorou demasiado. Tenta outra vez.' : `O Claude não respondeu: ${e.message}`);

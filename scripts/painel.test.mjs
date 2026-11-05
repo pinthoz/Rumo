@@ -482,3 +482,23 @@ test('painel local: marcar um evento como feito põe "✓ " no título, aqui e n
     fs.rmSync(pasta, { recursive: true, force: true });
   }
 });
+
+test('painel local: as imagens anexadas seguem para o Claude antes do texto, só de tipos aceites', async () => {
+  const { askClaude, limparImagens } = await import('./painel.mjs');
+  assert.deepEqual(limparImagens(undefined), []);
+  assert.deepEqual(limparImagens([{ tipo: 'image/png', dados: 'aGVsbG8=' }]), [{ type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'aGVsbG8=' } }]);
+  assert.throws(() => limparImagens([{ tipo: 'image/svg+xml', dados: 'aGVsbG8=' }]), /PNG, JPEG/);
+  assert.throws(() => limparImagens([{ tipo: 'image/png', dados: 'não é base64!' }]));
+  assert.throws(() => limparImagens(Array(6).fill({ tipo: 'image/png', dados: 'aGVsbG8=' })), /5 imagens/);
+  assert.equal((await api('/api/claude', { method: 'POST', body: JSON.stringify({ prompt: 'olá', imagens: [{ tipo: 'text/html', dados: 'eA==' }] }) })).status, 400);
+
+  const falso = path.join(root, 'claude-imagem.mjs');
+  fs.writeFileSync(falso, `let t = ''; process.stdin.on('data', (d) => { t += d; }); process.stdin.on('end', () => {
+    const c = JSON.parse(t.trim()).message.content;
+    const r = Array.isArray(c) ? c.map((b) => b.type + (b.type === 'image' ? ':' + b.source.media_type : ':' + b.text)).join(' | ') : 'só texto';
+    console.log(JSON.stringify({ type: 'result', is_error: false, result: r }));
+  });`);
+  const r = await askClaude('descreve', { cli: [process.execPath, falso], timeout: 8000, imagens: limparImagens([{ tipo: 'image/jpeg', dados: 'aGVsbG8=' }]) });
+  assert.equal(r, 'image:image/jpeg | text:descreve');
+  assert.equal(await askClaude('sem imagem', { cli: [process.execPath, falso], timeout: 8000 }), 'só texto');
+});

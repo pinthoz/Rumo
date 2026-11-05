@@ -8,7 +8,24 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import zlib from 'node:zlib';
 import { createPanelServer } from './painel.mjs';
+import { png } from './atalho.mjs';
+
+/** Um .docx mínimo (zip com word/document.xml comprimido), para testar a leitura de Word. */
+function docxDeTeste(paragrafos) {
+  const xml = `<?xml version="1.0"?><w:document xmlns:w="w"><w:body>${paragrafos.map((p) => `<w:p><w:r><w:t>${p}</w:t></w:r></w:p>`).join('')}</w:body></w:document>`;
+  const nome = Buffer.from('word/document.xml');
+  const dados = zlib.deflateRawSync(Buffer.from(xml));
+  const local = Buffer.alloc(30);
+  local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(8, 8); local.writeUInt32LE(dados.length, 18); local.writeUInt32LE(xml.length, 22); local.writeUInt16LE(nome.length, 26);
+  const central = Buffer.alloc(46);
+  central.writeUInt32LE(0x02014b50, 0); central.writeUInt16LE(8, 10); central.writeUInt32LE(dados.length, 20); central.writeUInt32LE(xml.length, 24); central.writeUInt16LE(nome.length, 28); central.writeUInt32LE(0, 42);
+  const inicioCentral = local.length + nome.length + dados.length;
+  const fim = Buffer.alloc(22);
+  fim.writeUInt32LE(0x06054b50, 0); fim.writeUInt16LE(1, 8); fim.writeUInt16LE(1, 10); fim.writeUInt32LE(central.length + nome.length, 12); fim.writeUInt32LE(inicioCentral, 16);
+  return Buffer.concat([local, nome, dados, central, nome, fim]).toString('base64');
+}
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CANDIDATOS = [
@@ -304,6 +321,112 @@ test('navegador: o visto marca um evento como feito e desmarca', { skip: sem }, 
   assert.equal(r.depois, 'false', 'clicar outra vez desmarca');
   assert.deepEqual(marcados.map((m) => m.feito), [true, false]);
   assert.equal(marcados[0].titulo, 'Evento de teste');
+  assert.deepEqual(erros, []);
+});
+
+test('navegador: arrastar um ficheiro para o Conversar anexa-o à mensagem', { skip: sem }, async () => {
+  const r = await naPagina(`(async () => {
+    const esperar = (ms) => new Promise((ok) => setTimeout(ok, ms));
+    const original = window.fetch;
+    let enviado = null;
+    window.fetch = async (url, o) => {
+      if (String(url).includes('/api/claude')) {
+        enviado = JSON.parse(o.body);
+        return new Response(JSON.stringify({ text: 'Li o ficheiro.' }) + '\\n', { headers: { 'Content-Type': 'application/x-ndjson' } });
+      }
+      return original(url, o);
+    };
+    try {
+      document.getElementById('tab-conversar').click();
+      const dt = new DataTransfer();
+      dt.items.add(new File(['Lista de compras: pão, leite.'], 'compras.txt', { type: 'text/plain' }));
+      const alvo = document.getElementById('talk-main');
+      alvo.dispatchEvent(new DragEvent('dragenter', { dataTransfer: dt, bubbles: true, cancelable: true }));
+      const moldura = !document.getElementById('talk-drop').hidden;
+      alvo.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+      await esperar(300);
+      const chip = document.getElementById('talk-files').textContent;
+      document.getElementById('talk-in').value = 'resume isto';
+      document.getElementById('talk-go').click();
+      await esperar(500);
+      const bolhas = [...document.querySelectorAll('#talk-chat .bubble.me')];
+      return { moldura, escondida: document.getElementById('talk-drop').hidden, chip, prompt: enviado?.prompt || '',
+        bolha: bolhas.at(-1)?.textContent || '', limpo: document.getElementById('talk-files').hidden };
+    } finally { window.fetch = original; }
+  })()`);
+  assert.equal(r.moldura, true, 'ao arrastar aparece a moldura');
+  assert.equal(r.escondida, true, 'ao largar desaparece');
+  assert.match(r.chip, /compras\.txt/);
+  assert.match(r.prompt, /resume isto[\s\S]*Ficheiro anexado: compras\.txt[\s\S]*pão, leite/, 'o conteúdo segue para o Claude');
+  assert.match(r.bolha, /resume isto/);
+  assert.match(r.bolha, /compras\.txt/);
+  assert.doesNotMatch(r.bolha, /pão, leite/, 'a bolha mostra o nome, não o conteúdo');
+  assert.equal(r.limpo, true, 'depois de enviar, os anexos saem');
+  assert.deepEqual(erros, []);
+});
+
+test('navegador: um Word e uma imagem largados na conversa seguem para o Claude', { skip: sem }, async () => {
+  const docx = docxDeTeste(['Ata da reunião', 'Decidimos &amp; avançar.']);
+  const imagem = png(64).toString('base64');
+  const r = await naPagina(`(async () => {
+    const esperar = (ms) => new Promise((ok) => setTimeout(ok, ms));
+    const deB64 = (b) => Uint8Array.from(atob(b), (c) => c.charCodeAt(0));
+    const original = window.fetch;
+    let enviado = null;
+    window.fetch = async (url, o) => {
+      if (String(url).includes('/api/claude')) {
+        enviado = JSON.parse(o.body);
+        return new Response(JSON.stringify({ text: 'ok' }) + '\\n', { headers: { 'Content-Type': 'application/x-ndjson' } });
+      }
+      return original(url, o);
+    };
+    try {
+      document.getElementById('tab-conversar').click();
+      const dt = new DataTransfer();
+      dt.items.add(new File([deB64('${docx}')], 'ata.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }));
+      dt.items.add(new File([deB64('${imagem}')], 'logo.png', { type: 'image/png' }));
+      document.getElementById('talk-main').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+      for (let i = 0; i < 30 && document.getElementById('talk-files').textContent.includes('a ler'); i++) await esperar(100);
+      const chips = document.getElementById('talk-files').textContent;
+      document.getElementById('talk-in').value = 'o que diz?';
+      document.getElementById('talk-go').click();
+      await esperar(800);
+      return { chips, prompt: enviado?.prompt || '', imagens: (enviado?.imagens || []).map((i) => i.tipo), nota: document.getElementById('talk-note').textContent };
+    } finally { window.fetch = original; }
+  })()`);
+  assert.match(r.chips, /ata\.docx/);
+  assert.match(r.chips, /logo\.png/);
+  assert.match(r.prompt, /Ficheiro anexado: ata\.docx[\s\S]*Ata da reunião\nDecidimos & avançar\./, 'o texto do Word segue, parágrafo a parágrafo');
+  assert.match(r.prompt, /Imagem anexada: logo\.png/);
+  assert.equal(r.imagens.length, 1, 'a imagem segue à parte');
+  assert.deepEqual(erros, []);
+});
+
+test('navegador: no Conversar, Enter envia e Ctrl+Enter muda de linha', { skip: sem }, async () => {
+  const r = await naPagina(`(async () => {
+    const original = window.fetch;
+    let pedidos = 0;
+    window.fetch = async (url, o) => {
+      if (String(url).includes('/api/claude')) { pedidos++; return new Response(JSON.stringify({ text: 'ok' }) + '\\n', { headers: { 'Content-Type': 'application/x-ndjson' } }); }
+      return original(url, o);
+    };
+    const caixa = document.getElementById('talk-in');
+    const tecla = (ctrlKey) => caixa.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey, bubbles: true, cancelable: true }));
+    try {
+      document.getElementById('tab-conversar').click();
+      caixa.value = 'linha um';
+      caixa.selectionStart = caixa.selectionEnd = caixa.value.length;
+      tecla(true);
+      const depoisCtrl = { valor: caixa.value, pedidos };
+      caixa.value += 'linha dois';
+      tecla(false);
+      await new Promise((ok) => setTimeout(ok, 400));
+      return { depoisCtrl, pedidos, vazio: caixa.value === '' };
+    } finally { window.fetch = original; }
+  })()`);
+  assert.deepEqual(r.depoisCtrl, { valor: 'linha um\n', pedidos: 0 }, 'Ctrl+Enter só muda de linha');
+  assert.equal(r.pedidos, 1, 'Enter envia');
+  assert.equal(r.vazio, true);
   assert.deepEqual(erros, []);
 });
 

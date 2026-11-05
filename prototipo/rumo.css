@@ -517,3 +517,14 @@
 .week-ev { display: flex; align-items: center; gap: 5px; }
 .week-ev .ev-check { width: 14px; height: 14px; }
 .week-ev .ev-check[aria-pressed="true"]::after { width: 4px; height: 7px; }
+
+/* ---------- Conversar: ficheiros anexados (arrastar e largar) ---------- */
+.talk-main { position: relative; }
+.talk-drop { position: absolute; inset: 8px; z-index: 5; display: grid; place-items: center; border: 2px dashed var(--accent); border-radius: 12px; background: color-mix(in srgb, var(--surface) 88%, var(--accent)); color: var(--ink); font-weight: 700; pointer-events: none; }
+.talk-files { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.talk-file { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 4px 6px 4px 12px; background: var(--surface-2); font-size: 0.85rem; max-width: 100%; }
+.talk-file span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.talk-file button { border: 0; background: transparent; color: var(--muted); cursor: pointer; font: inherit; padding: 0 4px; border-radius: 50%; }
+.talk-file button:hover { color: var(--ink); }
+.bubble-anexos { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.bubble-anexos span { font-size: 0.8rem; border-radius: 999px; padding: 2px 8px; background: color-mix(in srgb, var(--ink) 10%, transparent); }

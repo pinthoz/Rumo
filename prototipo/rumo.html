@@ -845,7 +845,8 @@ Cumprimentos</textarea>
         <ul class="talk-list" id="talk-list"></ul>
       </aside>
 
-      <div class="talk-main panel">
+      <div class="talk-main panel" id="talk-main">
+        <div class="talk-drop" id="talk-drop" hidden>Larga aqui os ficheiros (texto, PDF, Word ou imagens)</div>
         <header class="talk-head">
           <span class="row">
             <span class="chip today" id="talk-topic">sem tema</span>
@@ -866,13 +867,16 @@ Cumprimentos</textarea>
         <div class="chips" id="talk-topics" aria-label="Temas"></div>
         <div class="talk-menu" id="talk-menu" hidden role="listbox" aria-label="Temas"></div>
 
+        <div class="talk-files" id="talk-files" hidden aria-label="Ficheiros anexados"></div>
         <label class="sr" for="talk-in">A tua mensagem</label>
-        <textarea id="talk-in" rows="3" placeholder="Escreve aqui. Começa por / para escolher um tema (ex.: /financas). Ctrl+Enter envia."></textarea>
+        <textarea id="talk-in" rows="3" placeholder="Escreve aqui. Começa por / para escolher um tema (ex.: /financas). Enter envia; Ctrl+Enter muda de linha."></textarea>
         <div class="row between">
           <span class="row">
             <button class="btn primary" id="talk-go">Enviar</button>
             <button class="btn" id="talk-stop" hidden>Parar</button>
             <button class="btn ghost" id="talk-regen" type="button" hidden title="Pedir outra resposta à última mensagem">Repetir resposta</button>
+            <label class="btn ghost" for="talk-file" title="Anexar texto, PDF, Word (.docx) ou imagens (também podes arrastá-los para aqui)">Anexar</label>
+            <input type="file" id="talk-file" class="sr" multiple accept=".txt,.md,.markdown,.csv,.json,.pdf,.docx,.png,.jpg,.jpeg,.webp,.gif,image/png,image/jpeg,image/webp,image/gif,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.html,.xml,.yaml,.yml,.log,text/plain,text/markdown,text/csv,application/json,application/pdf">
           </span>
           <span class="note" id="talk-note"></span>
         </div>
