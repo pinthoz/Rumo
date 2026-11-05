@@ -528,3 +528,13 @@
 .talk-file button:hover { color: var(--ink); }
 .bubble-anexos { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .bubble-anexos span { font-size: 0.8rem; border-radius: 999px; padding: 2px 8px; background: color-mix(in srgb, var(--ink) 10%, transparent); }
+
+/* ---------- Conversar: as respostas cabem sempre na largura da conversa ----------
+   Numa grelha, cada mensagem crescia até à largura do seu conteúdo mais largo (um bloco
+   de código, uma ligação longa) e a conversa ganhava uma barra de deslocamento horizontal.
+   Agora só um bloco de código comprido tem a sua própria barra, dentro da bolha. */
+.chat { grid-template-columns: minmax(0, 1fr); overflow-x: hidden; }
+.msg, .msg .bubble, .bubble, .talk-main { min-width: 0; }
+.bubble pre { max-width: 100%; white-space: pre; }
+.bubble a, .formatado a, .bubble code, .formatado code { overflow-wrap: anywhere; word-break: break-word; }
+@media (max-width: 800px) { .talk { grid-template-columns: minmax(0, 1fr); } }
